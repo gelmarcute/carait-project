@@ -1,0 +1,109 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 30% 96%;
+    --foreground: 220 25% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 12%;
+
+    --primary: 215 80% 42%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 90% 55%;
+    --secondary-foreground: 220 25% 12%;
+
+    --muted: 210 20% 90%;
+    --muted-foreground: 215 15% 45%;
+
+    --accent: 160 55% 40%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 25% 82%;
+    --input: 214 25% 82%;
+    --ring: 215 80% 42%;
+
+    --radius: 1rem;
+
+    --sidebar-background: 215 80% 30%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 45 90% 55%;
+    --sidebar-primary-foreground: 220 25% 12%;
+    --sidebar-accent: 215 70% 38%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 215 60% 35%;
+    --sidebar-ring: 45 90% 55%;
+
+    --success: 160 55% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 90% 55%;
+    --warning-foreground: 220 25% 12%;
+  }
+
+  .dark {
+    --background: 220 25% 10%;
+    --foreground: 210 30% 96%;
+
+    --card: 220 25% 14%;
+    --card-foreground: 210 30% 96%;
+
+    --popover: 220 25% 14%;
+    --popover-foreground: 210 30% 96%;
+
+    --primary: 215 80% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 90% 55%;
+    --secondary-foreground: 220 25% 12%;
+
+    --muted: 220 20% 20%;
+    --muted-foreground: 215 15% 60%;
+
+    --accent: 160 55% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 20% 22%;
+    --input: 220 20% 22%;
+    --ring: 215 80% 55%;
+
+    --sidebar-background: 220 25% 8%;
+    --sidebar-foreground: 210 30% 96%;
+    --sidebar-primary: 45 90% 55%;
+    --sidebar-primary-foreground: 220 25% 12%;
+    --sidebar-accent: 220 20% 15%;
+    --sidebar-accent-foreground: 210 30% 96%;
+    --sidebar-border: 220 20% 15%;
+    --sidebar-ring: 45 90% 55%;
+
+    --success: 160 55% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 45 90% 55%;
+    --warning-foreground: 220 25% 12%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    font-size: 1.125rem;
+  }
+}

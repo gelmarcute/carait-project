@@ -41,13 +41,16 @@ const PageLayout = ({ title, children }: PageLayoutProps) => {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
+        // Gumamit ng Environment Variable para sa live backend URL, fallback sa localhost kung local
+        const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
         // 1. FETCH SCHEDULES
-        const schedRes = await fetch("http://localhost:3000/api/schedules");
+        const schedRes = await fetch(`${API_URL}/api/schedules`);
         const rawSchedData = schedRes.ok ? await schedRes.json() : [];
         const schedData = Array.isArray(rawSchedData) ? rawSchedData : rawSchedData.data || rawSchedData.schedules || [];
 
         // 2. FETCH TASKS
-        const taskRes = await fetch("http://localhost:3000/api/tasks");
+        const taskRes = await fetch(`${API_URL}/api/tasks`);
         const rawTaskData = taskRes.ok ? await taskRes.json() : [];
         const taskData = Array.isArray(rawTaskData) ? rawTaskData : rawTaskData.data || rawTaskData.tasks || [];
 

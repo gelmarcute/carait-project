@@ -9,8 +9,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (emailOrUsername, password) => {
     try {
-      // 🌟 BINAGO NATIN ANG URL: Mula /users/ naging /auth/
-      const response = await fetch("http://localhost:3000/api/auth/login", {
+      // Nakaturo na ito sa live Railway backend mo imbes na sa localhost
+      const response = await fetch("https://carait-project-production.up.railway.app/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

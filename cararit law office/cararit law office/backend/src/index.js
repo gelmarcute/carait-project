@@ -17,19 +17,28 @@ const { sendEmail } = require('./utils/emailHelper');
 const { startTaskScheduler } = require('./utils/scheduler'); 
 
 const app = express();
-const PORT = 3000;
+// Gamitin ang port ng Railway kung meron, kung wala ay 3000
+const PORT = process.env.PORT || 3000;
 
 // ============================
 // MIDDLEWARES
 // ============================
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors());
+
+// 🌟 FIX 1: Pinapayagan na ang Vercel link at Localhost para makapasok ang login
+app.use(cors({
+  origin: ["https://carait-project.vercel.app", "http://localhost:3000", "http://localhost:5173"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // ============================
 // DATABASE CONNECTION (MySQL) - UPDATED TO CONNECTION POOL
 // ============================
-const db = mysql.createPool({
+// 🌟 FIX 2: Babasahin na nito ang DB_Carait link sa Railway, at localhost naman kapag nasa laptop
+const dbConfig = process.env.DB_Carait || {
   host: 'localhost',
   user: 'root',
   password: '',
@@ -38,7 +47,9 @@ const db = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
-});
+};
+
+const db = mysql.createPool(dbConfig);
 
 // Test connection para makita sa terminal kung okay ang database
 db.getConnection((err, connection) => {

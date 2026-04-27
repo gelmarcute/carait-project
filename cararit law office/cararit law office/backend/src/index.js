@@ -16,43 +16,48 @@ const { startTaskScheduler } = require('./utils/scheduler');
 const app = express();
 
 /* ============================
-   ✅ PORT FIX (IMPORTANT)
+   ✅ PORT (WORKS EVERYWHERE)
 ============================ */
 const PORT = process.env.PORT || 3000;
 
 /* ============================
-   MIDDLEWARES
+   ✅ MIDDLEWARES
 ============================ */
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors());
+
+// ✔ DEV = open, PROD = specific
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "*",
+  credentials: true
+}));
+
 app.use(express.json());
 
 /* ============================
-   ✅ DATABASE (RAILWAY READY)
+   ✅ DATABASE (AUTO SWITCH)
 ============================ */
 const db = mysql.createPool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+  host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 3306,
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'brgy_system',
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
 });
 
 // Test connection (safe)
 db.getConnection((err, connection) => {
   if (err) {
-    console.error('❌ MySQL Connection Error:', err.message);
+    console.error('❌ MySQL Error:', err.message);
   } else {
-    console.log('✅ Connected to MySQL (Railway)');
+    console.log('✅ DB Connected');
     connection.release();
   }
 });
 
 /* ============================
-   UPLOADS (MULTER)
+   ✅ UPLOADS
 ============================ */
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
@@ -60,7 +65,11 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
+    const uniqueName =
+      Date.now() +
+      '-' +
+      Math.round(Math.random() * 1e9) +
+      path.extname(file.originalname);
     cb(null, uniqueName);
   },
 });
@@ -69,7 +78,7 @@ const upload = multer({ storage });
 app.use('/uploads', express.static(uploadDir));
 
 /* ============================
-   ROUTES
+   ✅ ROUTES
 ============================ */
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/logs', require('./routes/logsRoutes'));
@@ -78,14 +87,14 @@ app.use('/api/schedules', require('./routes/scheduleRoutes'));
 app.use('/api/auth', require('./routes/authRoutes')); 
 
 /* ============================
-   SAMPLE ROUTE (TEST)
+   TEST ROUTE
 ============================ */
 app.get('/', (req, res) => {
   res.send('🚀 API is running...');
 });
 
 /* ============================
-   TASKS (example kept)
+   TASKS
 ============================ */
 app.get('/api/tasks', (req, res) => {
   db.query('SELECT * FROM tasks ORDER BY createdAt DESC', (err, results) => {
@@ -102,7 +111,7 @@ app.get('/api/tasks', (req, res) => {
 });
 
 /* ============================
-   RESET PASSWORD (OPTIONAL)
+   RESET PASSWORD
 ============================ */
 app.get('/api/reset-all', async (req, res) => {
   try {
@@ -122,8 +131,8 @@ app.get('/api/reset-all', async (req, res) => {
 startTaskScheduler();
 
 /* ============================
-   START SERVER (IMPORTANT)
+   START SERVER (ALL DEVICES)
 ============================ */
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
 });

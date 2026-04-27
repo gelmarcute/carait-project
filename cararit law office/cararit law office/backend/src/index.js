@@ -17,23 +17,35 @@ const { sendEmail } = require('./utils/emailHelper');
 const { startTaskScheduler } = require('./utils/scheduler'); 
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // ============================
 // MIDDLEWARES
 // ============================
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors());
+
+// 🌟 UPDATED CORS CONFIGURATION
+app.use(cors({
+    origin: [
+        'https://pangalan-ng-project-mo.vercel.app', // Ilagay dito ang totoong Vercel link mo
+        'http://localhost:5173', // Para sa React Vite (Local)
+        'http://localhost:3000'  // Para sa React CRA (Local)
+    ],
+    credentials: true
+}));
+
 app.use(express.json());
 
 // ============================
-// DATABASE CONNECTION (MySQL) - UPDATED TO CONNECTION POOL
+// DATABASE CONNECTION (MySQL) - UPDATED TO CONNECTION POOL W/ ENV
 // ============================
+// Gumamit tayo ng process.env para ready sa live deployment, 
+// pero may fallback value para gagana pa rin sa XAMPP/localhost mo.
 const db = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'brgy_system',
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'brgy_system',
   dateStrings: true,
   waitForConnections: true,
   connectionLimit: 10,
@@ -337,5 +349,5 @@ app.get('/api/reset-all', async (req, res) => {
 startTaskScheduler();
 
 app.listen(PORT, () => {
-  console.log(`✅ Backend is running on http://localhost:${PORT}`);
+  console.log(`✅ Backend is running on port ${PORT}`);
 });

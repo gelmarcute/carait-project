@@ -29,6 +29,9 @@ app.use(cors({
     origin: [
         'http://localhost:8080', 
         'http://127.0.0.1:8080',
+        'http://localhost:8081',    // ✅ IDINAGDAG PARA SA IYONG REACT APP
+        'http://127.0.0.1:8081',    // ✅ IDINAGDAG PARA SA IYONG REACT APP
+        'http://localhost:5173',    // ✅ IDINAGDAG PARA SA DEFAULT VITE PORT (Just in case)
         'https://carait-project-production.up.railway.app', 
         'https://carait-project-gelmarcutes-projects.vercel.app' 
     ],

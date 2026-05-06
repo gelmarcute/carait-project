@@ -142,7 +142,7 @@ const PageLayout = ({ title, children }: PageLayoutProps) => {
       fetchNotifications();
       
       // 🌟 LIVE POLLING: Awtomatikong magche-check ng backend every 10 seconds!
-      const intervalId = setInterval(fetchNotifications, 10000);
+      const intervalId = setInterval(fetchNotifications, 3000);
       
       // Linisin ang interval kapag umalis sa page para hindi bumigat ang system
       return () => clearInterval(intervalId); 

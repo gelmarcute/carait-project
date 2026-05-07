@@ -305,6 +305,6 @@ app.delete('/api/tasks/:id', (req, res) => {
 // ============================
 startTaskScheduler();
 
-app.listen(PORT, () => {
+app.listen(PORT, '0,0,0,0', () => {
   console.log(`✅ Backend is running on port ${PORT}`);
 });

@@ -4,32 +4,40 @@ const AuthContext = createContext(null);
 
 export const useAuth = () => useContext(AuthContext);
 
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://carait-project-production.up.railway.app";
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   const login = async (emailOrUsername, password) => {
     try {
-      // 🌟 BINAGO: Nakaturo na ito sa LOCAL Backend mo (Port 3000)
-      const response = await fetch("http://localhost:3000/api/auth/login", {
+      // ✅ FIXED: Gumagamit na ng Railway backend
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email: emailOrUsername, password }),
+        credentials: "include",
+        body: JSON.stringify({
+          email: emailOrUsername,
+          password,
+        }),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
-        const data = await response.json();
         setUser(data.user);
-        return true; // Success
+        return true;
       } else {
-        const errorData = await response.json();
-        console.error("Login failed:", errorData.error);
-        return false; // Failed
+        console.error("Login failed:", data.error);
+        return false;
       }
     } catch (error) {
       console.error("Server connection error:", error);
-      return false; // Failed
+      return false;
     }
   };
 

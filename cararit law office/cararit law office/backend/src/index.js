@@ -1,309 +1,430 @@
-require('dotenv').config({ path: '../.env' });
+require("dotenv").config({ path: "../.env" });
 
-const express = require('express');
-const helmet = require('helmet');
-const cors = require('cors');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const mysql = require('mysql2');
-const bcrypt = require('bcryptjs');
+const express = require("express");
+const helmet = require("helmet");
+const cors = require("cors");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+const mysql = require("mysql2");
+const bcrypt = require("bcryptjs");
 
-// 🌟 IMPORT ANG HELPER FUNCTION PARA SA LOGS
-const { addActivityLog } = require('./controllers/logsController'); 
+// ============================
+// IMPORTS
+// ============================
 
-// 🌟 IMPORT ANG EMAIL HELPER AT BACKGROUND SCHEDULER
-const { sendEmail } = require('./utils/emailHelper'); 
-const { startTaskScheduler } = require('./utils/scheduler'); 
+const { addActivityLog } = require("./controllers/logsController");
+const { sendEmail } = require("./utils/emailHelper");
+const { startTaskScheduler } = require("./utils/scheduler");
+
+const userRoutes = require("./routes/userRoutes");
+const logRoutes = require("./routes/logsRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
+const scheduleRoutes = require("./routes/scheduleRoutes");
+const authRoutes = require("./routes/authRoutes");
+
+// ============================
+// APP INIT
+// ============================
 
 const app = express();
+
 const PORT = process.env.PORT || 3000;
 
 // ============================
-// MIDDLEWARES (INAYOS ANG CORS)
+// SECURITY + CORS
 // ============================
-app.use(helmet({ crossOriginResourcePolicy: false }));
 
-// Pinapayagan nito ang Frontend mo na kumonekta sa Backend mo
-app.use(cors({
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
+app.use(
+  cors({
     origin: [
-        'http://localhost:8080', 
-        'http://127.0.0.1:8080',
-        'http://localhost:8081',    // ✅ IDINAGDAG PARA SA IYONG REACT APP
-        'http://127.0.0.1:8081',    // ✅ IDINAGDAG PARA SA IYONG REACT APP
-        'http://localhost:5173',    // ✅ IDINAGDAG PARA SA DEFAULT VITE PORT (Just in case)
-        'https://carait-project-production.up.railway.app', 
-        'https://carait-project-gelmarcutes-projects.vercel.app' 
+      // LOCALHOST
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:8080",
+      "http://127.0.0.1:8080",
+      "http://localhost:8081",
+      "http://127.0.0.1:8081",
+
+      // VERCEL FRONTEND
+      "https://carait-project-gelmarcutes-projects.vercel.app",
     ],
-    credentials: true
-}));
+
+    methods: ["GET", "POST", "PUT", "DELETE"],
+
+    credentials: true,
+  })
+);
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ============================
-// DATABASE CONNECTION - READY PARA SA LOCAL AT INTERNET
+// MYSQL DATABASE
 // ============================
+
 const db = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'brgy_system',
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "",
+  database: process.env.DB_NAME || "brgy_system",
   port: process.env.DB_PORT || 3306,
-  dateStrings: true,
+
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+
+  dateStrings: true,
 });
 
 db.getConnection((err, connection) => {
   if (err) {
-      console.error('❌ MySQL Connection Error:', err.message);
+    console.error("❌ MYSQL CONNECTION ERROR:");
+    console.error(err.message);
   } else {
-      console.log('✅ Connected to MySQL database via Connection Pool!');
-      connection.release(); 
+    console.log("✅ Connected to MySQL Database");
+    connection.release();
   }
 });
 
 // ============================
-// UPLOADS CONFIGURATION (MULTER)
+// FILE UPLOADS
 // ============================
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir);
+
+const uploadDir = path.join(__dirname, "uploads");
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+
   filename: (req, file, cb) => {
-    const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
+    const uniqueName =
+      Date.now() +
+      "-" +
+      Math.round(Math.random() * 1e9) +
+      path.extname(file.originalname);
+
     cb(null, uniqueName);
   },
 });
 
 const upload = multer({ storage });
-app.use('/uploads', express.static(uploadDir));
+
+app.use("/uploads", express.static(uploadDir));
 
 // ============================
-// ROUTES IMPORTS
+// API ROUTES
 // ============================
-const userRoutes = require('./routes/userRoutes');
-const logRoutes = require('./routes/logsRoutes');
-const inventoryRoutes = require('./routes/inventoryRoutes');
-const scheduleRoutes = require('./routes/scheduleRoutes');
-const authRoutes = require('./routes/authRoutes'); 
 
-app.use('/api/users', userRoutes);
-app.use('/api/logs', logRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/schedules', scheduleRoutes); 
-app.use('/api/auth', authRoutes); 
+app.use("/api/users", userRoutes);
+app.use("/api/logs", logRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/schedules", scheduleRoutes);
+app.use("/api/auth", authRoutes);
 
 // ============================
-// 1. SOLICITATIONS ROUTES
+// ROOT TEST ROUTE
 // ============================
-app.post('/api/solicitations', upload.fields([{ name: 'documentImage', maxCount: 1 }, { name: 'personImage', maxCount: 1 }]), (req, res) => {
-  const data = req.body;
-  const docFile = req.files?.documentImage?.[0]?.filename || null;
-  const personFile = req.files?.personImage?.[0]?.filename || null;
 
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  const docUrl = docFile ? `${baseUrl}/uploads/${docFile}` : null;
-  const personUrl = personFile ? `${baseUrl}/uploads/${personFile}` : null;
-
-  const sql = `
-    INSERT INTO solicitations
-    (userId, event, date, request, venue, requisitorName, contactNo, requisitorDistrict, requisitorBarangay, remarks, documentImageUrl, personImageUrl, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-  `;
-  const values = [
-    data.userId || null, data.event, data.date, data.request, data.venue, data.requisitorName,
-    data.contactNo, data.requisitorDistrict, data.requisitorBarangay, data.remarks, docUrl, personUrl,
-  ];
-
-  db.query(sql, values, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    addActivityLog(`Added a new solicitation for ${data.requisitorName}`, data.requisitorName || 'System');
-    res.status(201).json({ message: 'Solicitation created successfully', insertId: result.insertId });
-  });
-});
-
-app.get('/api/solicitations', (req, res) => {
-  db.query('SELECT * FROM solicitations ORDER BY createdAt DESC', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
-});
-
-app.put('/api/solicitations/:id/status', (req, res) => {
-  const { status, note, user } = req.body;
-  db.query('UPDATE solicitations SET status = ?, note = ? WHERE id = ?', [status, note || null, req.params.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      addActivityLog(`Updated solicitation status to ${status}`, user || 'Admin');
-      res.json({ message: `Solicitation status updated to ${status}` });
-  });
-});
-
-app.delete('/api/solicitations/:id', (req, res) => {
-  const { user } = req.body;
-  db.query('DELETE FROM solicitations WHERE id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    addActivityLog(`Deleted solicitation ID: ${req.params.id}`, user || 'Admin');
-    res.json({ message: 'Solicitation deleted successfully' });
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "✅ Backend is running successfully",
   });
 });
 
 // ============================
-// 2. MEDICAL REQUESTS ROUTES
+// SOLICITATIONS ROUTES
 // ============================
-app.post('/api/solicitations/medical-requests', upload.fields([{ name: 'documentImage', maxCount: 1 }, { name: 'personImage', maxCount: 1 }]), (req, res) => {
-  const data = req.body;
-  const docFile = req.files?.documentImage?.[0]?.filename || null;
-  const personFile = req.files?.personImage?.[0]?.filename || null;
 
-  const baseUrl = `${req.protocol}://${req.get('host')}`;
-  const docUrl = docFile ? `${baseUrl}/uploads/${docFile}` : null;
-  const personUrl = personFile ? `${baseUrl}/uploads/${personFile}` : null;
+app.post(
+  "/api/solicitations",
+  upload.fields([
+    { name: "documentImage", maxCount: 1 },
+    { name: "personImage", maxCount: 1 },
+  ]),
+  (req, res) => {
+    const data = req.body;
 
-  const sql = `
-    INSERT INTO medical_requests
-    (userId, patientName, date, requestType, medicalIssue, contactNo, remarks, documentImageUrl, personImageUrl, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-  `;
-  const values = [
-    data.userId || null, data.patientName, data.date, data.requestType, data.medicalIssue,
-    data.contactNo, data.remarks, docUrl, personUrl,
-  ];
+    const docFile =
+      req.files?.documentImage?.[0]?.filename || null;
 
-  db.query(sql, values, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
-    addActivityLog(`Added a new medical request for ${data.patientName}`, data.patientName || 'System');
-    res.status(201).json({ message: 'Medical Request created successfully', insertId: result.insertId });
-  });
-});
+    const personFile =
+      req.files?.personImage?.[0]?.filename || null;
 
-app.get('/api/solicitations/medical-requests', (req, res) => {
-  db.query('SELECT * FROM medical_requests ORDER BY createdAt DESC', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
-});
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-app.put('/api/solicitations/medical-requests/:id/status', (req, res) => {
-  const { status, note, user } = req.body;
-  db.query('UPDATE medical_requests SET status = ?, note = ? WHERE id = ?', [status, note || null, req.params.id], (err) => {
-      if (err) return res.status(500).json({ error: err.message });
-      addActivityLog(`Updated medical request status to ${status}`, user || 'Admin');
-      res.json({ message: `Medical request status updated to ${status}` });
-  });
-});
+    const docUrl = docFile
+      ? `${baseUrl}/uploads/${docFile}`
+      : null;
 
-app.delete('/api/solicitations/medical-requests/:id', (req, res) => {
-  const { user } = req.body;
-  db.query('DELETE FROM medical_requests WHERE id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    addActivityLog(`Deleted medical request ID: ${req.params.id}`, user || 'Admin');
-    res.json({ message: 'Medical request deleted successfully' });
-  });
-});
+    const personUrl = personFile
+      ? `${baseUrl}/uploads/${personFile}`
+      : null;
 
-// ============================
-// 3. TASKS ROUTES
-// ============================
-app.get('/api/tasks', (req, res) => {
-  db.query('SELECT * FROM tasks ORDER BY createdAt DESC', (err, results) => {
-    if (err) return res.status(500).json({ error: 'Failed to fetch tasks' });
-    const tasks = results.map((t) => ({ 
-        ...t, 
-        completed: t.completed === 1,
-        archived: t.archived === 1 
-    }));
-    res.json(tasks);
-  });
-});
+    const sql = `
+      INSERT INTO solicitations
+      (
+        userId,
+        event,
+        date,
+        request,
+        venue,
+        requisitorName,
+        contactNo,
+        requisitorDistrict,
+        requisitorBarangay,
+        remarks,
+        documentImageUrl,
+        personImageUrl,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    `;
 
-app.post('/api/tasks', (req, res) => {
-  const { title, description, assignedTo, createdBy } = req.body;
+    const values = [
+      data.userId || null,
+      data.event,
+      data.date,
+      data.request,
+      data.venue,
+      data.requisitorName,
+      data.contactNo,
+      data.requisitorDistrict,
+      data.requisitorBarangay,
+      data.remarks,
+      docUrl,
+      personUrl,
+    ];
 
-  db.query('INSERT INTO tasks (title, description, assignedTo, createdBy) VALUES (?, ?, ?, ?)', [title, description, assignedTo, createdBy], (err) => {
-      if (err) return res.status(500).json({ error: `Database Error: ${err.message}` });
+    db.query(sql, values, (err, result) => {
+      if (err) {
+        console.error(err);
 
-      addActivityLog(`Created a new task: '${title}' assigned to ${assignedTo}`, createdBy || 'System');
+        return res.status(500).json({
+          error: err.message,
+        });
+      }
 
-      db.query("SELECT email, fullName FROM users WHERE id = ? OR fullName = ?", [assignedTo, assignedTo], (userErr, userResults) => {
-          if (!userErr && userResults.length > 0) {
-              const userEmail = userResults[0].email;
-              const userFullName = userResults[0].fullName;
-              const subject = `New Task Assigned: ${title}`;
-              const body = `Hi ${userFullName},\n\nA new task has been assigned to you by ${createdBy || 'the Admin'}.\n\nTask: ${title}\nDescription: ${description || 'No description provided'}\n\nPlease check the System for more details.\n\nThank you!`;
-              sendEmail(userEmail, subject, body);
-          }
+      addActivityLog(
+        `Added a new solicitation for ${data.requisitorName}`,
+        data.requisitorName || "System"
+      );
+
+      res.status(201).json({
+        message: "Solicitation created successfully",
+        insertId: result.insertId,
       });
+    });
+  }
+);
 
-      res.status(201).json({ message: 'Task added successfully' });
+app.get("/api/solicitations", (req, res) => {
+  db.query(
+    "SELECT * FROM solicitations ORDER BY createdAt DESC",
+    (err, results) => {
+      if (err) {
+        return res.status(500).json({
+          error: err.message,
+        });
+      }
+
+      res.json(results);
     }
   );
 });
 
-app.put('/api/tasks/:id/status', (req, res) => {
-  const { id } = req.params;
-  const { completed, user } = req.body;
+app.put("/api/solicitations/:id/status", (req, res) => {
+  const { status, note, user } = req.body;
 
-  db.query("SELECT title, assignedTo FROM tasks WHERE id = ?", [id], (err, results) => {
-    if (err || results.length === 0) return res.status(404).json({ error: 'Task not found' });
-    const taskTitle = results[0].title;
-    const assignedTo = results[0].assignedTo || 'Unassigned';
-
-    db.query('UPDATE tasks SET completed = ? WHERE id = ?', [completed ? 1 : 0, id], (updateErr) => {
-        if (updateErr) return res.status(500).json({ error: 'Failed to update task' });
-        addActivityLog(`Completed a task: '${taskTitle}' assigned to ${assignedTo}`, user || 'System');
-        res.json({ message: 'Task updated' });
+  db.query(
+    "UPDATE solicitations SET status = ?, note = ? WHERE id = ?",
+    [status, note || null, req.params.id],
+    (err) => {
+      if (err) {
+        return res.status(500).json({
+          error: err.message,
+        });
       }
-    );
-  });
+
+      addActivityLog(
+        `Updated solicitation status to ${status}`,
+        user || "Admin"
+      );
+
+      res.json({
+        message: `Solicitation status updated to ${status}`,
+      });
+    }
+  );
 });
 
-app.put('/api/tasks/:id/archive', (req, res) => {
-  const { id } = req.params;
-  const { user, role } = req.body;
+app.delete("/api/solicitations/:id", (req, res) => {
+  const { user } = req.body;
 
-  if (role !== 'admin' && user !== 'Admin') {
-      return res.status(403).json({ error: 'Access denied: Only admins can archive tasks.' });
-  }
+  db.query(
+    "DELETE FROM solicitations WHERE id = ?",
+    [req.params.id],
+    (err) => {
+      if (err) {
+        return res.status(500).json({
+          error: err.message,
+        });
+      }
 
-  db.query("SELECT title FROM tasks WHERE id = ?", [id], (err, results) => {
-    if (err || results.length === 0) return res.status(404).json({ error: 'Task not found' });
-    const taskTitle = results[0].title;
+      addActivityLog(
+        `Deleted solicitation ID: ${req.params.id}`,
+        user || "Admin"
+      );
 
-    db.query('UPDATE tasks SET archived = 1 WHERE id = ?', [id], (updateErr) => {
-      if (updateErr) return res.status(500).json({ error: 'Failed to archive task' });
-      addActivityLog(`Archived task: '${taskTitle}'`, user || 'System');
-      res.json({ message: 'Task archived successfully' });
-    });
-  });
+      res.json({
+        message: "Solicitation deleted successfully",
+      });
+    }
+  );
 });
 
-app.delete('/api/tasks/:id', (req, res) => {
-  const { id } = req.params;
-  const { user, role } = req.body;
+// ============================
+// TASKS ROUTES
+// ============================
 
-  if (role !== 'admin' && user !== 'Admin') {
-      return res.status(403).json({ error: 'Access denied: Only admins can delete tasks.' });
-  }
+app.get("/api/tasks", (req, res) => {
+  db.query(
+    "SELECT * FROM tasks ORDER BY createdAt DESC",
+    (err, results) => {
+      if (err) {
+        return res.status(500).json({
+          error: "Failed to fetch tasks",
+        });
+      }
 
-  db.query("SELECT title FROM tasks WHERE id = ?", [id], (err, results) => {
-    const taskTitle = (results && results.length > 0) ? results[0].title : `ID ${id}`;
+      const tasks = results.map((task) => ({
+        ...task,
+        completed: task.completed === 1,
+        archived: task.archived === 1,
+      }));
 
-    db.query('DELETE FROM tasks WHERE id = ?', [id], (deleteErr) => {
-      if (deleteErr) return res.status(500).json({ error: 'Failed to delete task' });
-      addActivityLog(`Deleted task: '${taskTitle}'`, user || 'Admin');
-      res.json({ message: 'Task deleted' });
-    });
+      res.json(tasks);
+    }
+  );
+});
+
+app.post("/api/tasks", (req, res) => {
+  const {
+    title,
+    description,
+    assignedTo,
+    createdBy,
+  } = req.body;
+
+  const sql =
+    "INSERT INTO tasks (title, description, assignedTo, createdBy) VALUES (?, ?, ?, ?)";
+
+  db.query(
+    sql,
+    [title, description, assignedTo, createdBy],
+    (err) => {
+      if (err) {
+        console.error(err);
+
+        return res.status(500).json({
+          error: err.message,
+        });
+      }
+
+      addActivityLog(
+        `Created task '${title}' assigned to ${assignedTo}`,
+        createdBy || "System"
+      );
+
+      db.query(
+        "SELECT email, fullName FROM users WHERE id = ? OR fullName = ?",
+        [assignedTo, assignedTo],
+        (userErr, userResults) => {
+          if (
+            !userErr &&
+            userResults &&
+            userResults.length > 0
+          ) {
+            const userEmail = userResults[0].email;
+
+            const userFullName =
+              userResults[0].fullName;
+
+            const subject = `New Task Assigned: ${title}`;
+
+            const body = `
+Hi ${userFullName},
+
+A new task has been assigned to you.
+
+Task:
+${title}
+
+Description:
+${description || "No description"}
+
+Please login to the system.
+
+Thank you!
+`;
+
+            sendEmail(userEmail, subject, body);
+          }
+        }
+      );
+
+      res.status(201).json({
+        message: "Task created successfully",
+      });
+    }
+  );
+});
+
+// ============================
+// 404 HANDLER
+// ============================
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Route not found",
   });
 });
 
 // ============================
-// START SERVER AT SCHEDULER
+// GLOBAL ERROR HANDLER
 // ============================
+
+app.use((err, req, res, next) => {
+  console.error("❌ SERVER ERROR:");
+  console.error(err);
+
+  res.status(500).json({
+    error: "Internal server error",
+  });
+});
+
+// ============================
+// START TASK SCHEDULER
+// ============================
+
 startTaskScheduler();
 
-app.listen(PORT, () => {
-  console.log(`✅ Backend is running on port ${PORT}`);
+// ============================
+// START SERVER
+// ============================
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✅ Backend running on port ${PORT}`);
 });

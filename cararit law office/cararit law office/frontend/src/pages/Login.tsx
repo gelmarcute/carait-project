@@ -1,101 +1,153 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
-// ⚠️ PAALALA: Kung ang folder mo ay "contexts" (may 's'), gawin itong '../contexts/AuthContext'
-import { useAuth } from '../contexts/AuthContext'; 
-
-export default function Login() {
-  const [loginId, setLoginId] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
 
-    if (!loginId || !password) {
-      setError('Please fill in all fields.');
-      setIsLoading(false);
+    if (!email || !password) {
+      toast.error("Please enter both email and password.");
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      // Tinatawag nito ang login function mula sa AuthContext mo
-      const success = await login(loginId, password);
+      const success = await login(email, password);
 
       if (success) {
-        navigate('/dashboard'); // Pupunta sa dashboard kapag tama ang login
+        toast.success("Welcome! You are now logged in.");
+        navigate("/dashboard");
       } else {
-        setError('Invalid username/email or password.');
+        toast.error("Invalid email or password. Please try again.");
       }
-    } catch (err) {
-      setError('Something went wrong connecting to the server.');
+    } catch (error) {
+      console.error("Login Error:", error);
+      toast.error("An error occurred during login. Please try again later.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 space-y-6 border border-gray-200">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8 overflow-hidden">
+      
+      {/* Modern Background Decorations */}
+      <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-50 dark:opacity-20 animate-blob"></div>
+      <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-400/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-50 dark:opacity-20 animate-blob animation-delay-2000"></div>
+      <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-400/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-3xl opacity-50 dark:opacity-20 animate-blob animation-delay-4000"></div>
+
+      <Card className="z-10 w-full max-w-md border border-border/50 bg-background/60 dark:bg-card/40 backdrop-blur-xl shadow-2xl dark:shadow-[0_8px_30px_rgb(0,0,0,0.6)] sm:rounded-2xl">
+        <CardHeader className="space-y-2 text-center pb-6 pt-10">
+          
+          {/* 🌟 BINAGO: Tinanggal ang solid white background at ginawang transparent drop-shadow */}
+          <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center rotate-3 transition-transform hover:rotate-0 duration-300 drop-shadow-xl dark:drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+            <img 
+              src="/logo.png" 
+              alt="Carait Law Office Logo" 
+              className="h-full w-full object-contain"
+            />
+          </div>
+
+          <CardTitle className="text-3xl font-extrabold tracking-tight text-foreground">
+            Carait Management
+          </CardTitle>
+          <CardDescription className="text-base text-muted-foreground font-medium">
+            Securely sign in to your workspace
+          </CardDescription>
+        </CardHeader>
         
-        {/* Header Section */}
-        <div className="text-center space-y-2">
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Welcome Back</h2>
-          <p className="text-gray-500 text-sm">Sign in to your account to continue</p>
-        </div>
+        <CardContent className="px-8 pb-10">
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2.5">
+              <Label htmlFor="email" className="text-sm font-semibold text-foreground">
+                Email Address
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="name@example.com"
+                className="h-12 bg-background/50 dark:bg-background/80 border-input focus-visible:ring-primary/30 focus-visible:border-primary transition-all duration-200"
+                required
+                disabled={isLoading}
+              />
+            </div>
 
-        {/* Error Message Alert */}
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
-            <p className="text-sm text-red-700 font-medium">{error}</p>
-          </div>
-        )}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-sm font-semibold text-foreground">
+                  Password
+                </Label>
+              </div>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-12 pr-12 bg-background/50 dark:bg-background/80 border-input focus-visible:ring-primary/30 focus-visible:border-primary transition-all duration-200"
+                  required
+                  disabled={isLoading}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                  onClick={togglePasswordVisibility}
+                  disabled={isLoading}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </Button>
+              </div>
+            </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-5">
-          {/* Username / Email Field */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Username or Email</label>
-            <input
-              type="text"
-              value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
-              className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all text-gray-900"
-              placeholder="Enter your email or username"
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-semibold shadow-md hover:shadow-lg transition-all duration-200 active:scale-[0.98] mt-2"
               disabled={isLoading}
-            />
-          </div>
-
-          {/* Password Field */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition-all text-gray-900"
-              placeholder="••••••••"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
-
-      </div>
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Authenticating...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
-}
+};
+
+export default Login;

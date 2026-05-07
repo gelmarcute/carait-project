@@ -35,6 +35,7 @@ app.use(cors({
         'https://carait-project-production.up.railway.app', 
         'https://carait-project-gelmarcutes-projects.vercel.app' 
     ],
+    methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true
 }));
 

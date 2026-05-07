@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 const AuthContext = createContext(null);
 
@@ -9,8 +9,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (emailOrUsername, password) => {
     try {
-      // 🌟 BINAGO: Nakaturo na ito sa LOCAL Backend mo (Port 3000)
-      const response = await fetch("http://localhost:3000/api/auth/login", {
+      // 🌟 BINAGO: Nakaturo na ito ngayon sa LIVE Backend mo sa Railway!
+      const response = await fetch("https://carait-project-production.up.railway.app/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

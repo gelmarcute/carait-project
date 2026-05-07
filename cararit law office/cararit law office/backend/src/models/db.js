@@ -1,10 +1,14 @@
 const mysql = require('mysql2');
 
 const db = mysql.createPool({
-    host: 'localhost',      // O kung ano ang host mo
-    user: 'root',           // Default user sa XAMPP
-    password: '',           // Ilagay ang password kung meron
-    database: 'brgy_system', // PALITAN ITO NG TOTOONG PANGALAN NG DATABASE MO
+    // 🌟 BINAGO: Babasahin na nito ang Railway Variables, 
+    // pero kung nasa laptop ka, 'localhost' at 'root' pa rin ang gagamitin.
+    host: process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
+    user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'brgy_system',
+    port: process.env.DB_PORT || process.env.MYSQLPORT || 3306,
+    
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0

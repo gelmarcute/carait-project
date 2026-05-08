@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import axios from "axios";
 
 import { Button } from "@/components/ui/button";
@@ -29,8 +28,8 @@ import { toast } from "sonner";
 
 const API = axios.create({
 
-  // 🌟 FIXED
-  // DIRECT RAILWAY URL
+  // 🌟 IMPORTANT
+  // WALANG "/" SA DULO
 
   baseURL:
     "https://carait-project-production.up.railway.app",
@@ -40,7 +39,7 @@ const API = axios.create({
       "application/json"
   },
 
-  withCredentials: false
+  timeout: 15000
 });
 
 const Login = () => {
@@ -94,32 +93,47 @@ const Login = () => {
         "📤 SENDING LOGIN REQUEST..."
       );
 
+      console.log(
+        "🌐 API URL:",
+        "https://carait-project-production.up.railway.app/api/auth/login"
+      );
+
       // ============================
-      // API REQUEST
+      // REQUEST
       // ============================
 
       const res = await API.post(
 
-        // 🌟 FIXED
-        // WALANG "/" SA HARAP
-
-        "api/auth/login",
+        // 🌟 DAPAT MAY "/" SA HARAP
+        "/api/auth/login",
 
         {
-          email:
-            loginId,
-
-          username:
-            loginId,
-
-          password
+          email: loginId,
+          username: loginId,
+          password: password
         }
       );
 
       console.log(
-        "✅ LOGIN SUCCESS:",
+        "✅ LOGIN RESPONSE:",
         res.data
       );
+
+      // ============================
+      // SUCCESS CHECK
+      // ============================
+
+      if (
+        !res.data.success
+      ) {
+
+        toast.error(
+          res.data.error ||
+          "Login failed"
+        );
+
+        return;
+      }
 
       // ============================
       // SAVE TOKEN
@@ -144,9 +158,7 @@ const Login = () => {
       ) {
 
         localStorage.setItem(
-
           "user",
-
           JSON.stringify(
             res.data.user
           )
@@ -154,9 +166,7 @@ const Login = () => {
       }
 
       toast.success(
-
         res.data.message ||
-
         "Login successful!"
       );
 
@@ -171,29 +181,66 @@ const Login = () => {
     } catch (err: any) {
 
       console.error(
-        "❌ LOGIN ERROR:",
+        "❌ FULL LOGIN ERROR:",
         err
       );
 
       // ============================
-      // ERROR MESSAGE
+      // SERVER ERROR
       // ============================
 
       if (
         err.response
       ) {
 
+        console.log(
+          "❌ SERVER RESPONSE:",
+          err.response.data
+        );
+
         toast.error(
 
           err.response.data?.error ||
 
+          err.response.data?.message ||
+
           "Login failed"
         );
 
-      } else {
+      }
+
+      // ============================
+      // NETWORK ERROR
+      // ============================
+
+      else if (
+        err.request
+      ) {
+
+        console.log(
+          "❌ NO SERVER RESPONSE"
+        );
 
         toast.error(
           "Cannot connect to server"
+        );
+
+      }
+
+      // ============================
+      // OTHER ERROR
+      // ============================
+
+      else {
+
+        console.log(
+          "❌ UNKNOWN ERROR:",
+          err.message
+        );
+
+        toast.error(
+          err.message ||
+          "Something went wrong"
         );
       }
 
@@ -231,7 +278,7 @@ const Login = () => {
 
       <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-400/30 rounded-full blur-3xl opacity-30"></div>
 
-      {/* LOGIN CARD */}
+      {/* CARD */}
 
       <Card className="z-10 w-full max-w-md border border-border/50 bg-background/70 backdrop-blur-xl shadow-2xl rounded-2xl">
 
@@ -270,7 +317,7 @@ const Login = () => {
             className="space-y-6"
           >
 
-            {/* LOGIN ID */}
+            {/* EMAIL / USERNAME */}
 
             <div className="space-y-2">
 
@@ -354,7 +401,7 @@ const Login = () => {
 
             </div>
 
-            {/* LOGIN BUTTON */}
+            {/* BUTTON */}
 
             <Button
               type="submit"

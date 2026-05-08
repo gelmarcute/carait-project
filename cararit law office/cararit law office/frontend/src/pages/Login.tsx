@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 import axios from "axios";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,7 @@ import {
 import { toast } from "sonner";
 
 // ============================
-// API URL
+// AXIOS API
 // ============================
 
 const API = axios.create({
@@ -38,7 +37,10 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  const [email, setEmail] =
+  // 🌟 BINAGO
+  // pwede email OR username
+
+  const [loginId, setLoginId] =
     useState("");
 
   const [password, setPassword] =
@@ -51,7 +53,7 @@ const Login = () => {
     useState(false);
 
   // ============================
-  // LOGIN
+  // LOGIN FUNCTION
   // ============================
 
   const handleLogin = async (
@@ -60,10 +62,10 @@ const Login = () => {
 
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!loginId || !password) {
 
       toast.error(
-        "Please enter email and password."
+        "Please enter your login credentials."
       );
 
       return;
@@ -73,16 +75,21 @@ const Login = () => {
 
     try {
 
+      console.log(
+        "📤 SENDING LOGIN REQUEST..."
+      );
+
       const res = await API.post(
         "/api/auth/login",
         {
-          email,
+          email: loginId,
+          username: loginId,
           password
         }
       );
 
       console.log(
-        "LOGIN RESPONSE:",
+        "✅ LOGIN RESPONSE:",
         res.data
       );
 
@@ -113,6 +120,7 @@ const Login = () => {
       }
 
       toast.success(
+        res.data.message ||
         "Login successful!"
       );
 
@@ -125,7 +133,7 @@ const Login = () => {
     } catch (err: any) {
 
       console.error(
-        "LOGIN ERROR:",
+        "❌ LOGIN ERROR:",
         err.response?.data ||
         err.message
       );
@@ -155,9 +163,9 @@ const Login = () => {
 
   return (
 
-    <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8 overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 overflow-hidden">
 
-      {/* BACKGROUND EFFECTS */}
+      {/* BACKGROUND */}
 
       <div className="absolute top-0 -left-4 w-72 h-72 bg-primary/30 rounded-full blur-3xl opacity-30"></div>
 
@@ -191,7 +199,7 @@ const Login = () => {
 
           <CardDescription>
 
-            Securely sign in to your workspace
+            Sign in to continue
 
           </CardDescription>
 
@@ -204,26 +212,26 @@ const Login = () => {
             className="space-y-6"
           >
 
-            {/* EMAIL */}
+            {/* EMAIL / USERNAME */}
 
             <div className="space-y-2">
 
-              <Label htmlFor="email">
+              <Label htmlFor="loginId">
 
-                Email Address
+                Email or Username
 
               </Label>
 
               <Input
-                id="email"
-                type="email"
-                value={email}
+                id="loginId"
+                type="text"
+                value={loginId}
                 onChange={(e) =>
-                  setEmail(
+                  setLoginId(
                     e.target.value
                   )
                 }
-                placeholder="name@example.com"
+                placeholder="Enter email or username"
                 className="h-12"
                 required
                 disabled={isLoading}
@@ -288,7 +296,7 @@ const Login = () => {
 
             </div>
 
-            {/* LOGIN BUTTON */}
+            {/* BUTTON */}
 
             <Button
               type="submit"

@@ -7,11 +7,13 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
+  // 🌟 Kukunin nito ang link sa .env file. Kapag wala, Railway link ang gagamitin niya as backup.
+  const API_URL = "http://localhost:3000";
+
   const login = async (emailOrUsername, password) => {
     try {
-      // 🌟 BINAGO: Nakaturo na ito sa LOCAL Backend mo (Port 3000)
-      
-        const response = await fetch("https://carait-project-production.up.railway.app/api/auth/login", {
+      // 🌟 Ginagamit na niya ngayon ang API_URL variable
+      const response = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -22,15 +24,15 @@ export const AuthProvider = ({ children }) => {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
-        return true; // Success
+        return true; 
       } else {
         const errorData = await response.json();
         console.error("Login failed:", errorData.error);
-        return false; // Failed
+        return false; 
       }
     } catch (error) {
       console.error("Server connection error:", error);
-      return false; // Failed
+      return false; 
     }
   };
 

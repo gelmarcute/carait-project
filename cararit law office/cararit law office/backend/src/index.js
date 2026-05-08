@@ -20,22 +20,25 @@ const PORT = process.env.PORT || 3000;
 // SECURITY & MIDDLEWARES
 // ============================
 
-app.use(helmet({
-  crossOriginResourcePolicy: false
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false
+  })
+);
 
-app.use(cors({
-  origin: [
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
-    'http://localhost:5173',
-    'https://carait-project-gelmarcutes-projects.vercel.app',
-    'https://YOUR_NETLIFY_NAME.netlify.app'
-  ],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:8080',
+      'http://127.0.0.1:8080',
+      'http://localhost:5173',
+      'https://carait-project-gelmarcutes-projects.vercel.app'
+    ],
+    credentials: true
+  })
+);
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // ============================
@@ -43,7 +46,10 @@ app.use(express.urlencoded({ extended: true }));
 // ============================
 
 app.get('/', (req, res) => {
-  res.send('✅ Backend is running successfully');
+  res.json({
+    success: true,
+    message: 'Backend is running successfully'
+  });
 });
 
 // ============================
@@ -65,11 +71,12 @@ const db = mysql.createPool({
 db.getConnection((err, connection) => {
   if (err) {
     console.error('❌ Database Connection Failed');
-    console.error(err);
-  } else {
-    console.log('✅ Connected to MySQL Database');
-    connection.release();
+    console.error(err.message);
+    return;
   }
+
+  console.log('✅ Connected to MySQL Database');
+  connection.release();
 });
 
 // ============================
@@ -79,7 +86,7 @@ db.getConnection((err, connection) => {
 const uploadDir = path.join(__dirname, 'uploads');
 
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 const storage = multer.diskStorage({
@@ -98,7 +105,30 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+// FILE FILTER
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = /jpg|jpeg|png|pdf/;
+
+  const extname = allowedTypes.test(
+    path.extname(file.originalname).toLowerCase()
+  );
+
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (extname && mimetype) {
+    return cb(null, true);
+  }
+
+  cb(new Error('Only JPG, PNG, and PDF files are allowed'));
+};
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  },
+  fileFilter
+});
 
 app.use('/uploads', express.static(uploadDir));
 
@@ -128,7 +158,7 @@ app.post(
     { name: 'documentImage', maxCount: 1 },
     { name: 'personImage', maxCount: 1 }
   ]),
-  (req, res) => {
+  async (req, res) => {
     try {
       const data = req.body;
 
@@ -188,16 +218,22 @@ app.post(
           console.error(err);
 
           return res.status(500).json({
+            success: false,
             error: err.message
           });
         }
 
-        addActivityLog(
-          `Added solicitation for ${data.requisitorName}`,
-          data.requisitorName || 'System'
-        );
+        try {
+          addActivityLog(
+            `Added solicitation for ${data.requisitorName}`,
+            data.requisitorName || 'System'
+          );
+        } catch (logError) {
+          console.error(logError);
+        }
 
         res.status(201).json({
+          success: true,
           message: 'Solicitation created successfully',
           insertId: result.insertId
         });
@@ -206,29 +242,15 @@ app.post(
       console.error(error);
 
       res.status(500).json({
+        success: false,
         error: 'Server Error'
       });
     }
   }
 );
 
-app.get('/api/solicitations', (req, res) => {
-  db.query(
-    'SELECT * FROM solicitations ORDER BY createdAt DESC',
-    (err, results) => {
-      if (err) {
-        return res.status(500).json({
-          error: err.message
-        });
-      }
-
-      res.json(results);
-    }
-  );
-});
-
 // ============================
-// TASKS ROUTES
+// TASK ROUTES
 // ============================
 
 app.get('/api/tasks', (req, res) => {
@@ -237,6 +259,7 @@ app.get('/api/tasks', (req, res) => {
     (err, results) => {
       if (err) {
         return res.status(500).json({
+          success: false,
           error: err.message
         });
       }
@@ -279,14 +302,19 @@ app.post('/api/tasks', (req, res) => {
         console.error(err);
 
         return res.status(500).json({
+          success: false,
           error: err.message
         });
       }
 
-      addActivityLog(
-        `Created task '${title}'`,
-        createdBy || 'System'
-      );
+      try {
+        addActivityLog(
+          `Created task '${title}'`,
+          createdBy || 'System'
+        );
+      } catch (logError) {
+        console.error(logError);
+      }
 
       db.query(
         'SELECT email, fullName FROM users WHERE id = ? OR fullName = ?',
@@ -294,9 +322,7 @@ app.post('/api/tasks', (req, res) => {
         (userErr, userResults) => {
           if (!userErr && userResults.length > 0) {
             const userEmail = userResults[0].email;
-
-            const userFullName =
-              userResults[0].fullName;
+            const userFullName = userResults[0].fullName;
 
             const subject = `New Task Assigned`;
 
@@ -321,10 +347,22 @@ Thank you.
       );
 
       res.status(201).json({
+        success: true,
         message: 'Task created successfully'
       });
     }
   );
+});
+
+// ============================
+// 404 HANDLER
+// ============================
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Route not found'
+  });
 });
 
 // ============================
@@ -335,7 +373,8 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
 
   res.status(500).json({
-    error: 'Something went wrong'
+    success: false,
+    error: err.message || 'Something went wrong'
   });
 });
 

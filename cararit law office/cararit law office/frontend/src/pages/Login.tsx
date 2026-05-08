@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+
 import axios from "axios";
 
 import { Button } from "@/components/ui/button";
@@ -23,22 +24,29 @@ import {
 import { toast } from "sonner";
 
 // ============================
-// AXIOS API
+// API CONFIG
 // ============================
 
 const API = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_URL,
 
-  withCredentials: true
+  // 🌟 FIXED
+  // DIRECT RAILWAY URL
+
+  baseURL:
+    "https://carait-project-production.up.railway.app",
+
+  headers: {
+    "Content-Type":
+      "application/json"
+  },
+
+  withCredentials: false
 });
 
 const Login = () => {
 
-  const navigate = useNavigate();
-
-  // 🌟 BINAGO
-  // pwede email OR username
+  const navigate =
+    useNavigate();
 
   const [loginId, setLoginId] =
     useState("");
@@ -62,10 +70,17 @@ const Login = () => {
 
     e.preventDefault();
 
-    if (!loginId || !password) {
+    // ============================
+    // VALIDATION
+    // ============================
+
+    if (
+      !loginId ||
+      !password
+    ) {
 
       toast.error(
-        "Please enter your login credentials."
+        "Please enter your credentials."
       );
 
       return;
@@ -79,17 +94,30 @@ const Login = () => {
         "📤 SENDING LOGIN REQUEST..."
       );
 
+      // ============================
+      // API REQUEST
+      // ============================
+
       const res = await API.post(
-        "/api/auth/login",
+
+        // 🌟 FIXED
+        // WALANG "/" SA HARAP
+
+        "api/auth/login",
+
         {
-          email: loginId,
-          username: loginId,
+          email:
+            loginId,
+
+          username:
+            loginId,
+
           password
         }
       );
 
       console.log(
-        "✅ LOGIN RESPONSE:",
+        "✅ LOGIN SUCCESS:",
         res.data
       );
 
@@ -97,7 +125,9 @@ const Login = () => {
       // SAVE TOKEN
       // ============================
 
-      if (res.data.token) {
+      if (
+        res.data.token
+      ) {
 
         localStorage.setItem(
           "token",
@@ -109,10 +139,14 @@ const Login = () => {
       // SAVE USER
       // ============================
 
-      if (res.data.user) {
+      if (
+        res.data.user
+      ) {
 
         localStorage.setItem(
+
           "user",
+
           JSON.stringify(
             res.data.user
           )
@@ -120,7 +154,9 @@ const Login = () => {
       }
 
       toast.success(
+
         res.data.message ||
+
         "Login successful!"
       );
 
@@ -128,20 +164,38 @@ const Login = () => {
       // REDIRECT
       // ============================
 
-      navigate("/dashboard");
+      navigate(
+        "/dashboard"
+      );
 
     } catch (err: any) {
 
       console.error(
         "❌ LOGIN ERROR:",
-        err.response?.data ||
-        err.message
+        err
       );
 
-      toast.error(
-        err.response?.data?.error ||
-        "Login failed"
-      );
+      // ============================
+      // ERROR MESSAGE
+      // ============================
+
+      if (
+        err.response
+      ) {
+
+        toast.error(
+
+          err.response.data?.error ||
+
+          "Login failed"
+        );
+
+      } else {
+
+        toast.error(
+          "Cannot connect to server"
+        );
+      }
 
     } finally {
 
@@ -161,6 +215,10 @@ const Login = () => {
       );
     };
 
+  // ============================
+  // UI
+  // ============================
+
   return (
 
     <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 overflow-hidden">
@@ -173,7 +231,7 @@ const Login = () => {
 
       <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-400/30 rounded-full blur-3xl opacity-30"></div>
 
-      {/* CARD */}
+      {/* LOGIN CARD */}
 
       <Card className="z-10 w-full max-w-md border border-border/50 bg-background/70 backdrop-blur-xl shadow-2xl rounded-2xl">
 
@@ -212,7 +270,7 @@ const Login = () => {
             className="space-y-6"
           >
 
-            {/* EMAIL / USERNAME */}
+            {/* LOGIN ID */}
 
             <div className="space-y-2">
 
@@ -296,7 +354,7 @@ const Login = () => {
 
             </div>
 
-            {/* BUTTON */}
+            {/* LOGIN BUTTON */}
 
             <Button
               type="submit"

@@ -1,47 +1,105 @@
-import { createContext, useContext, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useState
+} from "react";
 
-const AuthContext = createContext(null);
+const AuthContext = createContext<any>(null);
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider = ({ children }) => {
+export const AuthProvider = ({
+  children
+}: any) => {
+
   const [user, setUser] = useState(null);
 
-  // 🌟 Kukunin nito ang link sa .env file. Kapag wala, Railway link ang gagamitin niya as backup.
-  const API_URL = "http://localhost:3000";
+  // ======================
+  // API URL
+  // ======================
 
-  const login = async (emailOrUsername, password) => {
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  // ======================
+  // LOGIN
+  // ======================
+
+  const login = async (
+    emailOrUsername: string,
+    password: string
+  ) => {
+
     try {
-      // 🌟 Ginagamit na niya ngayon ang API_URL variable
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: emailOrUsername, password }),
-      });
 
-      if (response.ok) {
-        const data = await response.json();
+      const response = await fetch(
+        `${API_URL}/api/auth/login`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            email: emailOrUsername,
+            username: emailOrUsername,
+            password,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+
+        localStorage.setItem(
+          "token",
+          data.token
+        );
+
+        localStorage.setItem(
+          "user",
+          JSON.stringify(data.user)
+        );
+
         setUser(data.user);
-        return true; 
-      } else {
-        const errorData = await response.json();
-        console.error("Login failed:", errorData.error);
-        return false; 
+
+        return true;
       }
+
+      console.log(data.error);
+
+      return false;
+
     } catch (error) {
-      console.error("Server connection error:", error);
-      return false; 
+
+      console.log("❌ SERVER ERROR");
+      console.log(error);
+
+      return false;
     }
   };
 
+  // ======================
+  // LOGOUT
+  // ======================
+
   const logout = () => {
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -27,19 +27,13 @@ import { toast } from "sonner";
 // ============================
 
 const API = axios.create({
-
-  // 🌟 IMPORTANT
-  // WALANG "/" SA DULO
-
-  baseURL:
-    "https://carait-project-production.up.railway.app",
+  baseURL: import.meta.env.VITE_API_URL,
 
   headers: {
-    "Content-Type":
-      "application/json"
+    "Content-Type": "application/json",
   },
 
-  timeout: 15000
+  timeout: 15000,
 });
 
 const Login = () => {

@@ -2,10 +2,6 @@ require('dotenv').config();
 
 const mysql = require('mysql2');
 
-// ============================
-// CREATE POOL
-// ============================
-
 const db = mysql.createPool({
 
   host: process.env.MYSQLHOST,
@@ -26,7 +22,6 @@ const db = mysql.createPool({
 
   dateStrings: true,
 
-  // 🔥 IMPORTANT
   connectTimeout: 10000,
 
   enableKeepAlive: true,
@@ -34,16 +29,12 @@ const db = mysql.createPool({
   keepAliveInitialDelay: 0
 });
 
-// ============================
-// TEST CONNECTION
-// ============================
-
 db.getConnection((err, connection) => {
 
   if (err) {
 
     console.error(
-      '❌ DB CONNECTION ERROR:'
+      '❌ DB CONNECTION ERROR'
     );
 
     console.error(err);
@@ -57,10 +48,6 @@ db.getConnection((err, connection) => {
     connection.release();
   }
 });
-
-// ============================
-// ERROR HANDLER
-// ============================
 
 db.on('error', (err) => {
 

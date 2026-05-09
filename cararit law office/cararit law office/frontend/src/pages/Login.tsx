@@ -23,11 +23,18 @@ import {
 import { toast } from "sonner";
 
 // ============================
-// API CONFIG
+// API URL
+// ============================
+
+const API_URL =
+  import.meta.env.VITE_API_URL;
+
+// ============================
+// AXIOS INSTANCE
 // ============================
 
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_URL,
 
   headers: {
     "Content-Type": "application/json",
@@ -54,7 +61,7 @@ const Login = () => {
     useState(false);
 
   // ============================
-  // LOGIN FUNCTION
+  // LOGIN
   // ============================
 
   const handleLogin = async (
@@ -63,17 +70,10 @@ const Login = () => {
 
     e.preventDefault();
 
-    // ============================
-    // VALIDATION
-    // ============================
-
-    if (
-      !loginId ||
-      !password
-    ) {
+    if (!loginId || !password) {
 
       toast.error(
-        "Please enter your credentials."
+        "Please enter credentials"
       );
 
       return;
@@ -89,22 +89,45 @@ const Login = () => {
 
       console.log(
         "🌐 API URL:",
-        "https://carait-project-production.up.railway.app/api/auth/login"
+        `${API_URL}/api/auth/login`
       );
 
       // ============================
-      // REQUEST
+      // OPTIONAL BACKEND WAKEUP
+      // ============================
+
+      try {
+
+        await axios.get(
+          API_URL,
+          {
+            timeout: 10000
+          }
+        );
+
+        console.log(
+          "✅ Backend awake"
+        );
+
+      } catch (wakeError) {
+
+        console.log(
+          "⚠️ Backend wakeup failed"
+        );
+
+        console.log(wakeError);
+      }
+
+      // ============================
+      // LOGIN REQUEST
       // ============================
 
       const res = await API.post(
-
-        // 🌟 DAPAT MAY "/" SA HARAP
         "/api/auth/login",
-
         {
           email: loginId,
           username: loginId,
-          password: password
+          password
         }
       );
 
@@ -114,12 +137,10 @@ const Login = () => {
       );
 
       // ============================
-      // SUCCESS CHECK
+      // VALIDATE RESPONSE
       // ============================
 
-      if (
-        !res.data.success
-      ) {
+      if (!res.data.success) {
 
         toast.error(
           res.data.error ||
@@ -133,9 +154,7 @@ const Login = () => {
       // SAVE TOKEN
       // ============================
 
-      if (
-        res.data.token
-      ) {
+      if (res.data.token) {
 
         localStorage.setItem(
           "token",
@@ -147,9 +166,7 @@ const Login = () => {
       // SAVE USER
       // ============================
 
-      if (
-        res.data.user
-      ) {
+      if (res.data.user) {
 
         localStorage.setItem(
           "user",
@@ -160,7 +177,6 @@ const Login = () => {
       }
 
       toast.success(
-        res.data.message ||
         "Login successful!"
       );
 
@@ -168,9 +184,7 @@ const Login = () => {
       // REDIRECT
       // ============================
 
-      navigate(
-        "/dashboard"
-      );
+      navigate("/dashboard");
 
     } catch (err: any) {
 
@@ -180,12 +194,24 @@ const Login = () => {
       );
 
       // ============================
-      // SERVER ERROR
+      // TIMEOUT
       // ============================
 
       if (
-        err.response
+        err.code === "ECONNABORTED"
       ) {
+
+        toast.error(
+          "Server timeout. Backend may be sleeping or database unreachable."
+        );
+
+      }
+
+      // ============================
+      // SERVER RESPONSE
+      // ============================
+
+      else if (err.response) {
 
         console.log(
           "❌ SERVER RESPONSE:",
@@ -198,31 +224,29 @@ const Login = () => {
 
           err.response.data?.message ||
 
-          "Login failed"
+          "Server error"
         );
 
       }
 
       // ============================
-      // NETWORK ERROR
+      // NO RESPONSE
       // ============================
 
-      else if (
-        err.request
-      ) {
+      else if (err.request) {
 
         console.log(
           "❌ NO SERVER RESPONSE"
         );
 
         toast.error(
-          "Cannot connect to server"
+          "Cannot connect to backend server"
         );
 
       }
 
       // ============================
-      // OTHER ERROR
+      // UNKNOWN
       // ============================
 
       else {
@@ -256,10 +280,6 @@ const Login = () => {
       );
     };
 
-  // ============================
-  // UI
-  // ============================
-
   return (
 
     <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-12 overflow-hidden">
@@ -277,8 +297,6 @@ const Login = () => {
       <Card className="z-10 w-full max-w-md border border-border/50 bg-background/70 backdrop-blur-xl shadow-2xl rounded-2xl">
 
         <CardHeader className="space-y-2 text-center pb-6 pt-10">
-
-          {/* LOGO */}
 
           <div className="mx-auto mb-4 flex h-28 w-28 items-center justify-center">
 
@@ -311,7 +329,7 @@ const Login = () => {
             className="space-y-6"
           >
 
-            {/* EMAIL / USERNAME */}
+            {/* LOGIN */}
 
             <div className="space-y-2">
 

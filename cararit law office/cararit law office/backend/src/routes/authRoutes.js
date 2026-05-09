@@ -1,14 +1,38 @@
-const express = require('express');
+const mysql = require('mysql2');
 
-const router = express.Router();
+const db = mysql.createPool({
 
-const {
-  login,
-  logout
-} = require('../controllers/authController');
+  host: process.env.MYSQLHOST,
 
-router.post('/login', login);
+  user: process.env.MYSQLUSER,
 
-router.post('/logout', logout);
+  password: process.env.MYSQLPASSWORD,
 
-module.exports = router;
+  database: process.env.MYSQLDATABASE,
+
+  port: process.env.MYSQLPORT,
+
+  waitForConnections: true,
+
+  connectionLimit: 10,
+
+  queueLimit: 0
+});
+
+db.getConnection((err, connection) => {
+
+  if (err) {
+
+    console.log("❌ DATABASE CONNECTION ERROR");
+
+    console.log(err);
+
+    return;
+  }
+
+  console.log("✅ MYSQL CONNECTED");
+
+  connection.release();
+});
+
+module.exports = db;

@@ -1,12 +1,6 @@
 const db = require('../models/db');
-
 const bcrypt = require('bcryptjs');
-
 const jwt = require('jsonwebtoken');
-
-const {
-    addActivityLog
-} = require('./logsController');
 
 // ============================
 // LOGIN
@@ -14,251 +8,145 @@ const {
 
 exports.login = (req, res) => {
 
-    console.log("🔥 LOGIN REQUEST:");
-    console.log(req.body);
+  console.log("🔥 LOGIN REQUEST:");
+  console.log(req.body);
+
+  const loginId = req.body.email || req.body.username;
+  const password = req.body.password;
+
+  // ============================
+  // VALIDATION
+  // ============================
+
+  if (!loginId || !password) {
+    return res.status(400).json({
+      success: false,
+      error: "Please provide email/username and password"
+    });
+  }
+
+  // ============================
+  // QUERY
+  // ============================
+
+  const sql = `
+    SELECT * FROM users
+    WHERE email = ?
+    OR name = ?
+    OR fullName = ?
+    LIMIT 1
+  `;
+
+  db.query(sql, [loginId, loginId, loginId], async (err, results) => {
 
     // ============================
-    // GET INPUTS
+    // DATABASE ERROR
     // ============================
 
-    const loginId =
-        req.body.email ||
-        req.body.username;
+    if (err) {
+      console.log("❌ DATABASE ERROR");
+      console.log(err);
 
-    const password =
-        req.body.password;
-
-    // ============================
-    // VALIDATE INPUTS
-    // ============================
-
-    if (!loginId || !password) {
-
-        return res.status(400).json({
-            success: false,
-            error:
-                "Please provide email/username and password"
-        });
+      return res.status(500).json({
+        success: false,
+        error: "Database server error"
+      });
     }
 
     // ============================
-    // SQL QUERY
+    // USER NOT FOUND
     // ============================
 
-    const sql = `
-        SELECT * FROM users
-        WHERE
-            email = ?
-            OR name = ?
-            OR fullName = ?
-        LIMIT 1
-    `;
+    if (!results || results.length === 0) {
+      return res.status(401).json({
+        success: false,
+        error: "User not found"
+      });
+    }
+
+    const user = results[0];
+
+    console.log("✅ USER FOUND");
+    console.log(user);
+
+    let match = false;
 
     // ============================
-    // DATABASE QUERY
+    // PASSWORD CHECK
     // ============================
 
-    db.query(
-        sql,
-        [loginId, loginId, loginId],
-        async (err, results) => {
+    try {
 
-            // ============================
-            // DATABASE ERROR
-            // ============================
+      if (
+        user.password &&
+        user.password.startsWith('$2')
+      ) {
+        match = await bcrypt.compare(
+          password,
+          user.password
+        );
+      } else {
+        match = password === user.password;
+      }
 
-            if (err) {
+    } catch (bcryptError) {
 
-                console.error(
-                    "❌ DATABASE ERROR:"
-                );
+      console.log("❌ BCRYPT ERROR");
+      console.log(bcryptError);
 
-                console.error(err);
+      return res.status(500).json({
+        success: false,
+        error: "Password verification failed"
+      });
+    }
 
-                return res.status(500).json({
-                    success: false,
-                    error:
-                        "Database server error"
-                });
-            }
+    // ============================
+    // WRONG PASSWORD
+    // ============================
 
-            console.log(
-                "✅ DATABASE RESULTS:"
-            );
+    if (!match) {
+      return res.status(401).json({
+        success: false,
+        error: "Wrong password"
+      });
+    }
 
-            console.log(results);
+    // ============================
+    // TOKEN
+    // ============================
 
-            // ============================
-            // USER NOT FOUND
-            // ============================
-
-            if (
-                !results ||
-                results.length === 0
-            ) {
-
-                return res.status(401).json({
-                    success: false,
-                    error:
-                        "User not found"
-                });
-            }
-
-            // ============================
-            // USER FOUND
-            // ============================
-
-            const user = results[0];
-
-            console.log(
-                "✅ USER FOUND:"
-            );
-
-            console.log(user);
-
-            let match = false;
-
-            // ============================
-            // CHECK PASSWORD
-            // ============================
-
-            try {
-
-                // HASHED PASSWORD
-
-                if (
-                    user.password &&
-                    user.password.startsWith('$2')
-                ) {
-
-                    match =
-                        await bcrypt.compare(
-                            password,
-                            user.password
-                        );
-
-                } else {
-
-                    // PLAIN TEXT PASSWORD
-
-                    match =
-                        password ===
-                        user.password;
-                }
-
-            } catch (bcryptError) {
-
-                console.error(
-                    "❌ PASSWORD ERROR:"
-                );
-
-                console.error(
-                    bcryptError
-                );
-
-                return res.status(500).json({
-                    success: false,
-                    error:
-                        "Password verification failed"
-                });
-            }
-
-            console.log(
-                "PASSWORD MATCH:",
-                match
-            );
-
-            // ============================
-            // WRONG PASSWORD
-            // ============================
-
-            if (!match) {
-
-                return res.status(401).json({
-                    success: false,
-                    error:
-                        "Wrong password"
-                });
-            }
-
-            // ============================
-            // CREATE JWT TOKEN
-            // ============================
-
-            const token = jwt.sign(
-                {
-                    id: user.id,
-                    role: user.role
-                },
-
-                process.env.JWT_SECRET ||
-                "secret_key",
-
-                {
-                    expiresIn: '7d'
-                }
-            );
-
-            // ============================
-            // ACTIVITY LOG
-            // ============================
-
-            try {
-
-                addActivityLog(
-                    "User logged in",
-                    user.name ||
-                    user.fullName ||
-                    "Unknown User"
-                );
-
-            } catch (logError) {
-
-                console.error(
-                    "❌ LOG ERROR:"
-                );
-
-                console.error(
-                    logError
-                );
-            }
-
-            // ============================
-            // SUCCESS RESPONSE
-            // ============================
-
-            console.log(
-                `🔥 LOGIN SUCCESS: ${user.name}`
-            );
-
-            return res.json({
-
-                success: true,
-
-                message:
-                    "Welcome! You are now logged in.",
-
-                token,
-
-                user: {
-
-                    id: user.id,
-
-                    username:
-                        user.name,
-
-                    fullName:
-                        user.fullName,
-
-                    email:
-                        user.email,
-
-                    role:
-                        user.role
-                }
-            });
-        }
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: '7d'
+      }
     );
+
+    console.log("✅ LOGIN SUCCESS");
+
+    // ============================
+    // SUCCESS RESPONSE
+    // ============================
+
+    return res.json({
+      success: true,
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        username: user.name,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  });
+
 };
 
 // ============================
@@ -267,29 +155,9 @@ exports.login = (req, res) => {
 
 exports.logout = (req, res) => {
 
-    const { username } = req.body;
+  return res.json({
+    success: true,
+    message: "Logged out successfully"
+  });
 
-    try {
-
-        addActivityLog(
-            "User logged out",
-            username || 'Unknown User'
-        );
-
-    } catch (err) {
-
-        console.error(
-            "❌ LOGOUT LOG ERROR:"
-        );
-
-        console.error(err);
-    }
-
-    return res.json({
-
-        success: true,
-
-        message:
-            "Logged out successfully"
-    });
 };

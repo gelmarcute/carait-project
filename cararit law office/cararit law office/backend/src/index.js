@@ -7,9 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const mysql = require('mysql2');
 
-// Import your custom modules (Make sure these files exist in your project)
-// Note: I noticed you imported 'db' twice (one here, one below using mysql.createPool). 
-// Usually, you only need one, but I kept your structure to avoid breaking other files.
+// Pinalitan ko ang pangalan nito para hindi mag-conflict sa db pool sa ibaba
 const dbModel = require('./models/db'); 
 const { addActivityLog } = require('./controllers/logsController');
 const { sendEmail } = require('./utils/emailHelper');
@@ -19,34 +17,33 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ============================
-// SECURITY & MIDDLEWARES (CORS FIXED)
+// SECURITY & MIDDLEWARES (SUPER STRICT CORS FIX)
 // ============================
-app.use(
-  helmet({ crossOriginResourcePolicy: false })
-);
+app.use(helmet({ crossOriginResourcePolicy: false }));
 
-// Dito natin ilalagay ang Netlify link mo para hindi ma-block ng CORS
-const allowedOrigins = [
-  'https://caraitoffice.netlify.app', // Live Netlify Frontend
-  'http://localhost:5173',            // Local Vite Frontend
-  'http://localhost:3000'             // Alternative Local Frontend
-];
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://caraitoffice.netlify.app', // Ang live frontend mo
+      'http://localhost:5173',            // Para sa local testing (Vite)
+      'http://localhost:3000'             // Para sa local testing
+    ];
+    // Payagan ang mga nasa allowedOrigins, O kung walang origin (tulad ng server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Payagan ang lahat, lalo na ang OPTIONS
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true
+};
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Payagan ang mga requests na kasama sa allowedOrigins, o walang origin (tulad ng Postman)
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Payagan ang lahat ng HTTP methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Payagan ang mga headers na ito
-    credentials: true // Kailangan ito para makapag-pasa ng cookies/sessions
-  })
-);
+// I-apply ang CORS sa lahat ng routes
+app.use(cors(corsOptions));
+// I-FORCE ang server na sagutin ng tamang headers ang lahat ng "Preflight" (OPTIONS) requests
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -182,7 +179,10 @@ app.post(
           console.error(err);
           return res.status(500).json({ success: false, error: err.message });
         }
-        addActivityLog(`Added solicitation for ${data.requisitorName}`, data.requisitorName || 'System');
+        addActivityLog(
+          `Added solicitation for ${data.requisitorName}`, 
+          data.requisitorName || 'System'
+        );
         res.status(201).json({ success: true, message: 'Solicitation created successfully', insertId: result.insertId });
       });
     } catch (error) {
@@ -239,7 +239,10 @@ app.post(
         if (err) {
           return res.status(500).json({ success: false, error: err.message });
         }
-        addActivityLog(`Added medical request for ${data.patientName}`, data.patientName || 'System');
+        addActivityLog(
+          `Added medical request for ${data.patientName}`, 
+          data.patientName || 'System'
+        );
         res.status(201).json({ success: true, message: 'Medical request created successfully', insertId: result.insertId });
       });
     } catch (error) {

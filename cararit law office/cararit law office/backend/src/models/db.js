@@ -13,12 +13,11 @@ const db = mysql.createPool({
   dateStrings: true
 });
 
-// I-test ang connection kapag tinawag itong file
 db.getConnection((err, connection) => {
   if (err) {
-    console.error('❌ Models/DB MySQL Connection Error:', err.message);
+    console.error('❌ DB Model Connection Error:', err.message);
   } else {
-    console.log('✅ Models/DB Successfully Connected to MySQL Database');
+    console.log('✅ DB Model Connected to MySQL');
     connection.release();
   }
 });

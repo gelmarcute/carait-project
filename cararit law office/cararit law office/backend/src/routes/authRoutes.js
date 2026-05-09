@@ -1,38 +1,11 @@
-const mysql = require('mysql2');
+const express = require('express');
+const router = express.Router();
+// Siguraduhing tama ang path papunta sa controller mo
+const authController = require('../controllers/authController'); 
 
-const db = mysql.createPool({
+// 🌟 DAPAT '/login' LANG ITO, HINDI '/api/auth/login'
+router.post('/login', authController.login); 
 
-  host: process.env.MYSQLHOST,
+router.post('/logout', authController.logout);
 
-  user: process.env.MYSQLUSER,
-
-  password: process.env.MYSQLPASSWORD,
-
-  database: process.env.MYSQLDATABASE,
-
-  port: process.env.MYSQLPORT,
-
-  waitForConnections: true,
-
-  connectionLimit: 10,
-
-  queueLimit: 0
-});
-
-db.getConnection((err, connection) => {
-
-  if (err) {
-
-    console.log("❌ DATABASE CONNECTION ERROR");
-
-    console.log(err);
-
-    return;
-  }
-
-  console.log("✅ MYSQL CONNECTED");
-
-  connection.release();
-});
-
-module.exports = db;
+module.exports = router;

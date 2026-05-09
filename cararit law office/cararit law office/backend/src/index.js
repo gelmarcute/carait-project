@@ -343,7 +343,7 @@ app.use((err, req, res, next) => {
 // START TASK SCHEDULER
 // ============================
 
-startTaskScheduler();
+//startTaskScheduler();
 
 // ============================
 // START SERVER

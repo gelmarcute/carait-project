@@ -2,7 +2,6 @@ require('dotenv').config();
 
 const express = require('express');
 const helmet = require('helmet');
-const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -46,62 +45,37 @@ const allowedOrigins = [
 ];
 
 // ============================
-// ✅ MANUAL CORS
-// KAILANGAN ITO PINAKA-UNA
+// ✅ MANUAL CORS ONLY
+// (Inalis ang cors package —
+// hindi compatible sa Express 5)
 // ============================
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
 
-  // ✅ Log para makita sa Railway
   console.log(`🔍 ${req.method} ${req.path} | Origin: ${origin}`);
 
-  if (!origin || allowedOrigins.includes(origin)) {
-    res.setHeader(
-      'Access-Control-Allow-Origin',
-      origin || '*'
-    );
+  // ✅ Always set CORS headers
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (!origin) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
 
-  res.setHeader(
-    'Access-Control-Allow-Credentials',
-    'true'
-  );
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
+  res.setHeader('Vary', 'Origin');
 
-  res.setHeader(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PUT, PATCH, DELETE, OPTIONS'
-  );
-
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Requested-With'
-  );
-
-  // ✅ Agad sagutin ang preflight
+  // ✅ Respond immediately to preflight
   if (req.method === 'OPTIONS') {
     console.log('✅ OPTIONS preflight handled for:', origin);
-    return res.sendStatus(204);
+    res.status(204).end();
+    return;
   }
 
   next();
 });
-
-// ============================
-// CORS PACKAGE (backup)
-// ============================
-
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    console.log('❌ BLOCKED CORS:', origin);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-}));
 
 // ============================
 // BODY PARSER
@@ -114,7 +88,10 @@ app.use(express.urlencoded({ extended: true }));
 // SECURITY
 // ============================
 
-app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  crossOriginOpenerPolicy: false,
+}));
 
 // ============================
 // HEALTH CHECK

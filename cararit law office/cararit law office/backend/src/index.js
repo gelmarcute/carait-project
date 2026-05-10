@@ -8,6 +8,26 @@ const path = require('path');
 const fs = require('fs');
 
 // ============================
+// ERROR DEBUGGING
+// ============================
+
+process.on('uncaughtException', (err) => {
+
+  console.error(
+    '❌ UNCAUGHT EXCEPTION:',
+    err
+  );
+});
+
+process.on('unhandledRejection', (err) => {
+
+  console.error(
+    '❌ UNHANDLED REJECTION:',
+    err
+  );
+});
+
+// ============================
 // DATABASE
 // ============================
 
@@ -35,16 +55,17 @@ const {
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
+const PORT =
+  process.env.PORT || 3000;
 
 // ============================
-// TRUST PROXY (RAILWAY)
+// TRUST PROXY
 // ============================
 
 app.set('trust proxy', 1);
 
 // ============================
-// CORS
+// ALLOWED ORIGINS
 // ============================
 
 const allowedOrigins = [
@@ -60,7 +81,61 @@ const allowedOrigins = [
   'http://localhost:3000'
 ];
 
-const corsOptions = {
+// ============================
+// MANUAL CORS FIX
+// ============================
+
+app.use((req, res, next) => {
+
+  const origin = req.headers.origin;
+
+  // Allow matching origins
+
+  if (
+    allowedOrigins.includes(origin)
+  ) {
+
+    res.header(
+      'Access-Control-Allow-Origin',
+      origin
+    );
+  }
+
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+  );
+
+  res.header(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, DELETE, OPTIONS'
+  );
+
+  res.header(
+    'Access-Control-Allow-Credentials',
+    'true'
+  );
+
+  res.header(
+    'Vary',
+    'Origin'
+  );
+
+  // Handle OPTIONS Request
+
+  if (req.method === 'OPTIONS') {
+
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
+// ============================
+// EXPRESS CORS
+// ============================
+
+app.use(cors({
 
   origin: function(origin, callback) {
 
@@ -73,53 +148,39 @@ const corsOptions = {
 
     // Allow Frontend Domains
 
-    if (allowedOrigins.includes(origin)) {
+    if (
+      allowedOrigins.includes(origin)
+    ) {
 
       return callback(null, true);
     }
 
-    console.log('❌ BLOCKED ORIGIN:', origin);
+    console.log(
+      '❌ BLOCKED ORIGIN:',
+      origin
+    );
 
     return callback(
       new Error('Not allowed by CORS')
     );
   },
 
-  credentials: true,
-
-  methods: [
-    'GET',
-    'POST',
-    'PUT',
-    'DELETE',
-    'OPTIONS'
-  ],
-
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization'
-  ]
-};
-
-// ============================
-// APPLY CORS
-// ============================
-
-app.use(cors(corsOptions));
-
-// IMPORTANT FOR PREFLIGHT
-app.options('*', cors(corsOptions));
+  credentials: true
+}));
 
 // ============================
 // BODY PARSER
 // ============================
 
 app.use(express.json({
+
   limit: '10mb'
 }));
 
 app.use(express.urlencoded({
+
   extended: true,
+
   limit: '10mb'
 }));
 
@@ -128,6 +189,7 @@ app.use(express.urlencoded({
 // ============================
 
 app.use(helmet({
+
   crossOriginResourcePolicy: false
 }));
 
@@ -154,7 +216,8 @@ app.get('/', (req, res) => {
 
     success: true,
 
-    message: 'Backend running successfully'
+    message:
+      'Backend running successfully'
   });
 });
 
@@ -168,7 +231,8 @@ app.get('/api/test', (req, res) => {
 
     success: true,
 
-    message: 'Backend working'
+    message:
+      'Backend working'
   });
 });
 
@@ -208,6 +272,7 @@ const uploadDir = path.join(
 if (!fs.existsSync(uploadDir)) {
 
   fs.mkdirSync(uploadDir, {
+
     recursive: true
   });
 }
@@ -216,50 +281,62 @@ if (!fs.existsSync(uploadDir)) {
 // MULTER STORAGE
 // ============================
 
-const storage = multer.diskStorage({
+const storage =
+  multer.diskStorage({
 
-  destination: (req, file, cb) => {
+    destination: (
+      req,
+      file,
+      cb
+    ) => {
 
-    cb(null, uploadDir);
-  },
+      cb(null, uploadDir);
+    },
 
-  filename: (req, file, cb) => {
+    filename: (
+      req,
+      file,
+      cb
+    ) => {
 
-    const uniqueName =
+      const uniqueName =
 
-      Date.now() +
+        Date.now() +
 
-      '-' +
+        '-' +
 
-      Math.round(Math.random() * 1e9) +
+        Math.round(
+          Math.random() * 1e9
+        ) +
 
-      path.extname(file.originalname);
+        path.extname(
+          file.originalname
+        );
 
-    cb(null, uniqueName);
-  }
-});
+      cb(null, uniqueName);
+    }
+  });
 
 // ============================
 // FILE FILTER
 // ============================
 
 const fileFilter = (
-
   req,
   file,
   cb
-
 ) => {
 
   const allowedTypes =
     /jpeg|jpg|png|pdf/;
 
-  const extname = allowedTypes.test(
+  const extname =
+    allowedTypes.test(
 
-    path.extname(
-      file.originalname
-    ).toLowerCase()
-  );
+      path.extname(
+        file.originalname
+      ).toLowerCase()
+    );
 
   const mimetype =
 
@@ -271,7 +348,10 @@ const fileFilter = (
 
     file.mimetype === 'application/pdf';
 
-  if (extname && mimetype) {
+  if (
+    extname &&
+    mimetype
+  ) {
 
     return cb(null, true);
   }
@@ -293,6 +373,7 @@ const upload = multer({
   storage,
 
   limits: {
+
     fileSize:
       10 * 1024 * 1024
   },
@@ -305,7 +386,9 @@ const upload = multer({
 // ============================
 
 app.use(
+
   '/uploads',
+
   express.static(uploadDir)
 );
 
@@ -382,25 +465,39 @@ app.post(
 
     try {
 
-      const data = req.body;
+      const data =
+        req.body;
 
       const docFile =
-        req.files?.documentImage?.[0]?.filename || null;
+
+        req.files?.documentImage?.[0]?.filename ||
+
+        null;
 
       const personFile =
-        req.files?.personImage?.[0]?.filename || null;
+
+        req.files?.personImage?.[0]?.filename ||
+
+        null;
 
       const baseUrl =
+
         `${req.protocol}://${req.get('host')}`;
 
       const docUrl =
+
         docFile
+
           ? `${baseUrl}/uploads/${docFile}`
+
           : null;
 
       const personUrl =
+
         personFile
+
           ? `${baseUrl}/uploads/${personFile}`
+
           : null;
 
       const sql = `
@@ -534,14 +631,19 @@ app.use((
 
 ) => {
 
-  console.error('❌ GLOBAL ERROR:', err);
+  console.error(
+    '❌ GLOBAL ERROR:',
+    err
+  );
 
   return res.status(500).json({
 
     success: false,
 
     error:
+
       err.message ||
+
       'Something went wrong'
   });
 });
@@ -556,9 +658,17 @@ startTaskScheduler();
 // START SERVER
 // ============================
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(
 
-  console.log(
-    `🚀 Server running on port ${PORT}`
-  );
-});
+  PORT,
+
+  '0.0.0.0',
+
+  () => {
+
+    console.log(
+
+      `🚀 Server running on port ${PORT}`
+    );
+  }
+);

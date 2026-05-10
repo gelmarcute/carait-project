@@ -7,12 +7,28 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// ✅ USE ONLY ONE DB CONNECTION
+// ============================
+// DATABASE
+// ============================
+
 const db = require('./models/db');
 
-const { addActivityLog } = require('./controllers/logsController');
-const { sendEmail } = require('./utils/emailHelper');
-const { startTaskScheduler } = require('./utils/scheduler');
+// ============================
+// CONTROLLERS / HELPERS
+// ============================
+
+const { addActivityLog } =
+  require('./controllers/logsController');
+
+const { sendEmail } =
+  require('./utils/emailHelper');
+
+const { startTaskScheduler } =
+  require('./utils/scheduler');
+
+// ============================
+// EXPRESS APP
+// ============================
 
 const app = express();
 
@@ -65,7 +81,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.options("*", cors(corsOptions));
+// ✅ FIXED FOR EXPRESS 5 / NODE 22
+app.options(/.*/, cors(corsOptions));
 
 // ============================
 // BODY PARSER
@@ -90,8 +107,11 @@ app.use(
 app.get('/', (req, res) => {
 
   return res.json({
+
     success: true,
-    message: 'Backend running successfully'
+
+    message:
+      'Backend running successfully'
   });
 });
 
@@ -120,7 +140,7 @@ db.getConnection((err, connection) => {
 });
 
 // ============================
-// UPLOADS
+// UPLOADS DIRECTORY
 // ============================
 
 const uploadDir =
@@ -133,6 +153,10 @@ if (!fs.existsSync(uploadDir)) {
     { recursive: true }
   );
 }
+
+// ============================
+// MULTER STORAGE
+// ============================
 
 const storage =
   multer.diskStorage({
@@ -170,6 +194,10 @@ const storage =
     }
   });
 
+// ============================
+// FILE FILTER
+// ============================
+
 const fileFilter = (
   req,
   file,
@@ -204,12 +232,17 @@ const fileFilter = (
     return cb(null, true);
   }
 
-  cb(
+  return cb(
+
     new Error(
-      'Only JPG, PNG, PDF allowed'
+      'Only JPG, PNG, PDF files are allowed'
     )
   );
 };
+
+// ============================
+// MULTER
+// ============================
 
 const upload = multer({
 
@@ -222,6 +255,10 @@ const upload = multer({
 
   fileFilter
 });
+
+// ============================
+// STATIC FILES
+// ============================
 
 app.use(
   '/uploads',
@@ -299,43 +336,73 @@ app.post(
 
     try {
 
-      const data = req.body;
+      const data =
+        req.body;
 
       const docFile =
-        req.files?.documentImage?.[0]?.filename || null;
+
+        req.files?.documentImage?.[0]?.filename ||
+
+        null;
 
       const personFile =
-        req.files?.personImage?.[0]?.filename || null;
+
+        req.files?.personImage?.[0]?.filename ||
+
+        null;
 
       const baseUrl =
+
         `${req.protocol}://${req.get('host')}`;
 
       const docUrl =
+
         docFile
+
           ? `${baseUrl}/uploads/${docFile}`
+
           : null;
 
       const personUrl =
+
         personFile
+
           ? `${baseUrl}/uploads/${personFile}`
+
           : null;
 
       const sql = `
+
         INSERT INTO solicitations (
+
           userId,
+
           event,
+
           date,
+
           request,
+
           venue,
+
           requisitorName,
+
           contactNo,
+
           requisitorDistrict,
+
           requisitorBarangay,
+
           remarks,
+
           documentImageUrl,
+
           personImageUrl,
+
           status
+
         )
+
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `;
 
@@ -367,7 +434,9 @@ app.post(
       ];
 
       db.query(
+
         sql,
+
         values,
 
         (err, result) => {
@@ -377,20 +446,29 @@ app.post(
             console.error(err);
 
             return res.status(500).json({
+
               success: false,
+
               error: err.message
             });
           }
 
           addActivityLog(
+
             `Added solicitation for ${data.requisitorName}`,
+
             data.requisitorName || 'System'
           );
 
           return res.status(201).json({
+
             success: true,
-            message: 'Solicitation created successfully',
-            insertId: result.insertId
+
+            message:
+              'Solicitation created successfully',
+
+            insertId:
+              result.insertId
           });
         }
       );
@@ -400,7 +478,9 @@ app.post(
       console.error(error);
 
       return res.status(500).json({
+
         success: false,
+
         error: 'Server Error'
       });
     }
@@ -408,29 +488,40 @@ app.post(
 );
 
 // ============================
-// 404
+// 404 ROUTE
 // ============================
 
 app.use((req, res) => {
 
   return res.status(404).json({
+
     success: false,
+
     error: 'Route not found'
   });
 });
 
 // ============================
-// ERROR HANDLER
+// GLOBAL ERROR HANDLER
 // ============================
 
-app.use((err, req, res, next) => {
+app.use((
+  err,
+  req,
+  res,
+  next
+) => {
 
   console.error(err.stack);
 
   return res.status(500).json({
+
     success: false,
+
     error:
+
       err.message ||
+
       'Something went wrong'
   });
 });

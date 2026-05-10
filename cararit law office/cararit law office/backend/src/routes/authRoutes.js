@@ -1,12 +1,24 @@
-const express = require('express');
-const router = express.Router();
-const { login, logout } = require('../controllers/authController');
+router.post('/login', async (req, res) => {
 
-// ============================
-// AUTH ROUTES
-// ============================
+  try {
 
-router.post('/login', login);
-router.post('/logout', logout);
+    console.log('LOGIN HIT');
 
-module.exports = router;
+    const { email, password } = req.body;
+
+    console.log(email);
+
+    // login logic here
+
+  } catch (error) {
+
+    console.error('LOGIN ERROR:', error);
+
+    return res.status(500).json({
+
+      success: false,
+
+      error: error.message
+    });
+  }
+});

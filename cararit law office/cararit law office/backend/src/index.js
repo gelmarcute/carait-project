@@ -49,17 +49,8 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function(origin, callback) {
-
-    // Allow Postman / mobile apps
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    // Allow frontend origins
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
     console.log('❌ BLOCKED CORS:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -71,8 +62,8 @@ const corsOptions = {
 // ✅ Apply CORS middleware
 app.use(cors(corsOptions));
 
-// ✅ Handle preflight OPTIONS requests for ALL routes
-app.options('*', cors(corsOptions));
+// ✅ Handle preflight - compatible sa Express 4 at 5
+app.options('/(.*)', cors(corsOptions));
 
 // ============================
 // BODY PARSER

@@ -1,11 +1,20 @@
 const express = require('express');
+
 const router = express.Router();
-// Siguraduhing tama ang path papunta sa controller mo
-const authController = require('../controllers/authController'); 
 
-// 🌟 DAPAT '/login' LANG ITO, HINDI '/api/auth/login'
-router.post('/login', authController.login); 
+const authController =
+  require('../controllers/authController');
 
-router.post('/logout', authController.logout);
+// LOGIN
+router.post(
+  '/login',
+  authController.login
+);
+
+// LOGOUT
+router.post(
+  '/logout',
+  authController.logout
+);
 
 module.exports = router;

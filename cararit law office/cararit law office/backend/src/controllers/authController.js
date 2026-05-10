@@ -1,5 +1,7 @@
 const db = require('../models/db');
+
 const bcrypt = require('bcryptjs');
+
 const jwt = require('jsonwebtoken');
 
 // ============================
@@ -8,13 +10,19 @@ const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
 
-  console.log("🔥 LOGIN REQUEST");
+  console.log(
+    "🔥 LOGIN REQUEST"
+  );
+
   console.log(req.body);
 
   try {
 
     const loginId =
-      req.body.email || req.body.username;
+
+      req.body.email ||
+
+      req.body.username;
 
     const password =
       req.body.password;
@@ -23,33 +31,54 @@ exports.login = async (req, res) => {
     // VALIDATION
     // ============================
 
-    if (!loginId || !password) {
+    if (
+      !loginId ||
+      !password
+    ) {
 
       return res.status(400).json({
+
         success: false,
-        error: "Please provide credentials"
+
+        error:
+          "Please provide credentials"
       });
     }
+
+    // ============================
+    // SQL
+    // ============================
+
+    const sql = `
+
+      SELECT * FROM users
+
+      WHERE email = ?
+
+      OR name = ?
+
+      OR fullName = ?
+
+      LIMIT 1
+    `;
+
+    console.log(
+      "📡 RUNNING LOGIN QUERY..."
+    );
 
     // ============================
     // QUERY
     // ============================
 
-    const sql = `
-      SELECT * FROM users
-      WHERE email = ?
-      OR name = ?
-      OR fullName = ?
-      LIMIT 1
-    `;
-
-    // ============================
-    // DATABASE QUERY
-    // ============================
-
     db.query(
+
       sql,
-      [loginId, loginId, loginId],
+
+      [
+        loginId,
+        loginId,
+        loginId
+      ],
 
       async (err, results) => {
 
@@ -61,14 +90,25 @@ exports.login = async (req, res) => {
 
           if (err) {
 
-            console.log("❌ DATABASE ERROR");
+            console.log(
+              "❌ DATABASE ERROR"
+            );
+
             console.log(err);
 
             return res.status(500).json({
+
               success: false,
-              error: "Database error"
+
+              error:
+                "Database error"
             });
           }
+
+          console.log(
+            "📥 MYSQL RESULTS:",
+            results
+          );
 
           // ============================
           // USER NOT FOUND
@@ -80,12 +120,16 @@ exports.login = async (req, res) => {
           ) {
 
             return res.status(401).json({
+
               success: false,
-              error: "User not found"
+
+              error:
+                "User not found"
             });
           }
 
-          const user = results[0];
+          const user =
+            results[0];
 
           // ============================
           // PASSWORD CHECK
@@ -94,14 +138,20 @@ exports.login = async (req, res) => {
           let match = false;
 
           if (
+
             user.password &&
+
             user.password.startsWith('$2')
+
           ) {
 
-            match = await bcrypt.compare(
-              password,
-              user.password
-            );
+            match =
+              await bcrypt.compare(
+
+                password,
+
+                user.password
+              );
 
           } else {
 
@@ -116,16 +166,20 @@ exports.login = async (req, res) => {
           if (!match) {
 
             return res.status(401).json({
+
               success: false,
-              error: "Wrong password"
+
+              error:
+                "Wrong password"
             });
           }
 
           // ============================
-          // JWT TOKEN
+          // TOKEN
           // ============================
 
           const token = jwt.sign(
+
             {
               id: user.id,
               role: user.role
@@ -138,35 +192,55 @@ exports.login = async (req, res) => {
             }
           );
 
-          console.log("✅ LOGIN SUCCESS");
+          console.log(
+            "✅ LOGIN SUCCESS"
+          );
 
           // ============================
           // RESPONSE
           // ============================
 
           return res.status(200).json({
+
             success: true,
-            message: "Login successful",
+
+            message:
+              "Login successful",
 
             token,
 
             user: {
+
               id: user.id,
-              username: user.name,
-              fullName: user.fullName,
-              email: user.email,
-              role: user.role
+
+              username:
+                user.name,
+
+              fullName:
+                user.fullName,
+
+              email:
+                user.email,
+
+              role:
+                user.role
             }
           });
 
         } catch (innerError) {
 
-          console.log("❌ INNER ERROR");
+          console.log(
+            "❌ INNER ERROR"
+          );
+
           console.log(innerError);
 
           return res.status(500).json({
+
             success: false,
-            error: "Internal server error"
+
+            error:
+              "Internal server error"
           });
         }
       }
@@ -174,12 +248,36 @@ exports.login = async (req, res) => {
 
   } catch (error) {
 
-    console.log("❌ LOGIN ERROR");
+    console.log(
+      "❌ LOGIN ERROR"
+    );
+
     console.log(error);
 
     return res.status(500).json({
+
       success: false,
-      error: "Server error"
+
+      error:
+        "Server error"
     });
   }
+};
+
+// ============================
+// LOGOUT
+// ============================
+
+exports.logout = async (
+  req,
+  res
+) => {
+
+  return res.status(200).json({
+
+    success: true,
+
+    message:
+      'Logout successful'
+  });
 };

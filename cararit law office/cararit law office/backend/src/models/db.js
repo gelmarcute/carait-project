@@ -1,61 +1,18 @@
+const mysql = require('mysql2'); // o 'mysql', depende sa naka-install sa'yo
 require('dotenv').config();
 
-const mysql = require('mysql2');
-
 const db = mysql.createPool({
-
-  host: process.env.MYSQLHOST,
-
-  user: process.env.MYSQLUSER,
-
-  password: process.env.MYSQLPASSWORD,
-
-  database: process.env.MYSQLDATABASE,
-
-  port: process.env.MYSQLPORT,
-
-  waitForConnections: true,
-
-  connectionLimit: 10,
-
-  queueLimit: 0,
-
-  dateStrings: true,
-
-  connectTimeout: 10000,
-
-  enableKeepAlive: true,
-
-  keepAliveInitialDelay: 0
-});
-
-db.getConnection((err, connection) => {
-
-  if (err) {
-
-    console.error(
-      '❌ DB CONNECTION ERROR'
-    );
-
-    console.error(err);
-
-  } else {
-
-    console.log(
-      '✅ MYSQL CONNECTED'
-    );
-
-    connection.release();
-  }
-});
-
-db.on('error', (err) => {
-
-  console.log(
-    '❌ MYSQL POOL ERROR'
-  );
-
-  console.log(err);
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306,
+    
+    // 🔥 PAMPIGIL SA TIMEOUT AT HANGING REQUESTS
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 10000 // Mag-e-error agad imbes na mag-hang forever
 });
 
 module.exports = db;

@@ -31,7 +31,7 @@ process.on('unhandledRejection', (err) => {
 // DATABASE
 // ============================
 
-const db = require('./models/db');
+const db = require('../models/db');
 
 // ============================
 // CONTROLLERS / HELPERS
@@ -39,15 +39,15 @@ const db = require('./models/db');
 
 const {
   addActivityLog
-} = require('./controllers/logsController');
+} = require('../controllers/logsController');
 
 const {
   sendEmail
-} = require('./utils/emailHelper');
+} = require('../utils/emailHelper');
 
 const {
   startTaskScheduler
-} = require('./utils/scheduler');
+} = require('../utils/scheduler');
 
 // ============================
 // EXPRESS APP
@@ -78,7 +78,9 @@ const allowedOrigins = [
 
   'http://localhost:5173',
 
-  'http://localhost:3000'
+  'http://localhost:3000',
+
+  'http://localhost:8080'
 ];
 
 // ============================
@@ -88,8 +90,6 @@ const allowedOrigins = [
 app.use((req, res, next) => {
 
   const origin = req.headers.origin;
-
-  // Allow matching origins
 
   if (
     allowedOrigins.includes(origin)
@@ -121,7 +121,7 @@ app.use((req, res, next) => {
     'Origin'
   );
 
-  // Handle OPTIONS Request
+  // Handle OPTIONS request
 
   if (req.method === 'OPTIONS') {
 
@@ -146,7 +146,7 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Allow Frontend Domains
+    // Allow frontend domains
 
     if (
       allowedOrigins.includes(origin)
@@ -266,7 +266,7 @@ db.getConnection((err, connection) => {
 
 const uploadDir = path.join(
   __dirname,
-  'uploads'
+  '../uploads'
 );
 
 if (!fs.existsSync(uploadDir)) {
@@ -397,19 +397,19 @@ app.use(
 // ============================
 
 const userRoutes =
-  require('./routes/userRoutes');
+  require('../routes/userRoutes');
 
 const logRoutes =
-  require('./routes/logsRoutes');
+  require('../routes/logsRoutes');
 
 const inventoryRoutes =
-  require('./routes/inventoryRoutes');
+  require('../routes/inventoryRoutes');
 
 const scheduleRoutes =
-  require('./routes/scheduleRoutes');
+  require('../routes/scheduleRoutes');
 
 const authRoutes =
-  require('./routes/authRoutes');
+  require('../routes/authRoutes');
 
 // ============================
 // API ROUTES

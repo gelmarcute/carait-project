@@ -39,50 +39,44 @@ const PORT =
 // SECURITY
 // ============================
 
-app.use(
-  helmet({
-    crossOriginResourcePolicy: false
-  })
-);
+app.use(helmet());
 
 // ============================
-// CORS FIX
+// CORS
 // ============================
 
 const allowedOrigins = [
-    'https://carait-project-gelmarcutes-projects.vercel.app',        // Yung luma/production
-    'https://carait-project-git-main-gelmarcutes-projects.vercel.app', // ✅ YUNG BAGO (Idinagdag natin)
-    'https://caraitoffice.netlify.app',
-    'http://localhost:5173',
-    'http://localhost:3000'
+
+  'https://carait-project-gelmarcutes-projects.vercel.app',
+
+  'https://carait-project-git-main-gelmarcutes-projects.vercel.app',
+
+  'https://caraitoffice.netlify.app',
+
+  'http://localhost:5173',
+
+  'http://localhost:3000'
 ];
 
 app.use(cors({
 
   origin: function(origin, callback) {
 
-    // ✅ ALLOW POSTMAN / MOBILE APPS
+    // Allow Postman / mobile apps
 
     if (!origin) {
 
       return callback(null, true);
     }
 
-    // ✅ ALLOW FRONTEND
+    // Allow frontend URLs
 
-    if (
-      allowedOrigins.includes(origin)
-    ) {
+    if (allowedOrigins.includes(origin)) {
 
       return callback(null, true);
     }
 
-    // ❌ BLOCK UNKNOWN ORIGIN
-
-    console.log(
-      '❌ BLOCKED CORS:',
-      origin
-    );
+    console.log('❌ BLOCKED CORS:', origin);
 
     return callback(
       new Error('Not allowed by CORS')
@@ -108,24 +102,25 @@ app.use(cors({
   ]
 }));
 
-// ✅ EXPRESS 5 FIX
-app.options(/.*/, cors());
+// ============================
+// HANDLE PREFLIGHT REQUESTS
+// ============================
+
+app.options('*', cors());
 
 // ============================
 // BODY PARSER
 // ============================
 
-app.use(
-  express.json({
-    limit: '10mb'
-  })
-);
+app.use(express.json({
 
-app.use(
-  express.urlencoded({
-    extended: true
-  })
-);
+  limit: '10mb'
+}));
+
+app.use(express.urlencoded({
+
+  extended: true
+}));
 
 // ============================
 // HEALTH CHECK
@@ -143,7 +138,7 @@ app.get('/', (req, res) => {
 });
 
 // ============================
-// TEST DB CONNECTION
+// DATABASE CONNECTION TEST
 // ============================
 
 db.getConnection((err, connection) => {
@@ -156,86 +151,94 @@ db.getConnection((err, connection) => {
 
     console.error(err);
 
-  } else {
-
-    console.log(
-      '✅ MYSQL CONNECTED'
-    );
-
-    connection.release();
+    return;
   }
+
+  console.log(
+    '✅ MYSQL CONNECTED'
+  );
+
+  connection.release();
 });
 
 // ============================
-// UPLOADS DIRECTORY
+// UPLOAD DIRECTORY
 // ============================
 
 const uploadDir =
+
   path.join(__dirname, 'uploads');
 
 if (!fs.existsSync(uploadDir)) {
 
-  fs.mkdirSync(
-    uploadDir,
-    { recursive: true }
-  );
+  fs.mkdirSync(uploadDir, {
+
+    recursive: true
+  });
 }
 
 // ============================
 // MULTER STORAGE
 // ============================
 
-const storage =
-  multer.diskStorage({
+const storage = multer.diskStorage({
 
-    destination: (
-      req,
-      file,
-      cb
-    ) => {
+  destination: (
 
-      cb(null, uploadDir);
-    },
+    req,
+    file,
+    cb
 
-    filename: (
-      req,
-      file,
-      cb
-    ) => {
+  ) => {
 
-      const uniqueName =
+    cb(null, uploadDir);
+  },
 
-        Date.now() +
+  filename: (
 
-        '-' +
+    req,
+    file,
+    cb
 
-        Math.round(
-          Math.random() * 1e9
-        ) +
+  ) => {
 
-        path.extname(
-          file.originalname
-        );
+    const uniqueName =
 
-      cb(null, uniqueName);
-    }
-  });
+      Date.now() +
+
+      '-' +
+
+      Math.round(
+        Math.random() * 1e9
+      ) +
+
+      path.extname(
+        file.originalname
+      );
+
+    cb(null, uniqueName);
+  }
+});
 
 // ============================
 // FILE FILTER
 // ============================
 
 const fileFilter = (
+
   req,
   file,
   cb
+
 ) => {
 
   const allowedTypes =
     /jpeg|jpg|png|pdf/;
 
   const extname =
+
     allowedTypes.test(
+
       path.extname(
         file.originalname
       ).toLowerCase()
@@ -276,6 +279,7 @@ const upload = multer({
   storage,
 
   limits: {
+
     fileSize:
       10 * 1024 * 1024
   },
@@ -288,7 +292,9 @@ const upload = multer({
 // ============================
 
 app.use(
+
   '/uploads',
+
   express.static(uploadDir)
 );
 
@@ -349,12 +355,18 @@ app.post(
   '/api/solicitations',
 
   upload.fields([
+
     {
+
       name: 'documentImage',
+
       maxCount: 1
     },
+
     {
+
       name: 'personImage',
+
       maxCount: 1
     }
   ]),
@@ -403,29 +415,17 @@ app.post(
         INSERT INTO solicitations (
 
           userId,
-
           event,
-
           date,
-
           request,
-
           venue,
-
           requisitorName,
-
           contactNo,
-
           requisitorDistrict,
-
           requisitorBarangay,
-
           remarks,
-
           documentImageUrl,
-
           personImageUrl,
-
           status
 
         )
@@ -533,10 +533,12 @@ app.use((req, res) => {
 // ============================
 
 app.use((
+
   err,
   req,
   res,
   next
+
 ) => {
 
   console.error(err.stack);
@@ -554,12 +556,19 @@ app.use((
 });
 
 // ============================
+// START TASK SCHEDULER
+// ============================
+
+startTaskScheduler();
+
+// ============================
 // START SERVER
 // ============================
 
 app.listen(PORT, () => {
 
   console.log(
+
     `✅ Server running on port ${PORT}`
   );
 });

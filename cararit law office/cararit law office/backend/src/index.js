@@ -46,19 +46,51 @@ app.use(
 );
 
 // ============================
-// CORS
+// CORS FIX
 // ============================
 
-const corsOptions = {
+const allowedOrigins = [
 
-  origin: [
+  'https://caraitoffice.netlify.app',
 
-    'https://caraitoffice.netlify.app',
+  'http://localhost:5173',
 
-    'http://localhost:5173',
+  'http://localhost:3000'
+];
 
-    'http://localhost:3000'
-  ],
+app.use(cors({
+
+  origin: function(origin, callback) {
+
+    // ✅ ALLOW POSTMAN / MOBILE APPS
+
+    if (!origin) {
+
+      return callback(null, true);
+    }
+
+    // ✅ ALLOW FRONTEND
+
+    if (
+      allowedOrigins.includes(origin)
+    ) {
+
+      return callback(null, true);
+    }
+
+    // ❌ BLOCK UNKNOWN ORIGIN
+
+    console.log(
+      '❌ BLOCKED CORS:',
+      origin
+    );
+
+    return callback(
+      new Error('Not allowed by CORS')
+    );
+  },
+
+  credentials: true,
 
   methods: [
     'GET',
@@ -74,15 +106,11 @@ const corsOptions = {
     'Content-Type',
     'Accept',
     'Authorization'
-  ],
+  ]
+}));
 
-  credentials: true
-};
-
-app.use(cors(corsOptions));
-
-// ✅ FIXED FOR EXPRESS 5 / NODE 22
-app.options(/.*/, cors(corsOptions));
+// ✅ EXPRESS 5 FIX
+app.options(/.*/, cors());
 
 // ============================
 // BODY PARSER

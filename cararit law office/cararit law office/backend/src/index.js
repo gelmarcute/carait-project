@@ -36,12 +36,6 @@ const PORT =
   process.env.PORT || 3000;
 
 // ============================
-// SECURITY
-// ============================
-
-app.use(helmet());
-
-// ============================
 // CORS
 // ============================
 
@@ -69,44 +63,25 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Allow frontend URLs
+    // Allow frontend origins
 
     if (allowedOrigins.includes(origin)) {
 
       return callback(null, true);
     }
 
-    console.log('❌ BLOCKED CORS:', origin);
+    console.log(
+      '❌ BLOCKED CORS:',
+      origin
+    );
 
     return callback(
       new Error('Not allowed by CORS')
     );
   },
 
-  credentials: true,
-
-  methods: [
-    'GET',
-    'POST',
-    'PUT',
-    'DELETE',
-    'OPTIONS'
-  ],
-
-  allowedHeaders: [
-    'Origin',
-    'X-Requested-With',
-    'Content-Type',
-    'Accept',
-    'Authorization'
-  ]
+  credentials: true
 }));
-
-// ============================
-// HANDLE PREFLIGHT REQUESTS
-// ============================
-
-app.options(/(.*)/, cors());
 
 // ============================
 // BODY PARSER
@@ -123,6 +98,15 @@ app.use(express.urlencoded({
 }));
 
 // ============================
+// SECURITY
+// ============================
+
+app.use(helmet({
+
+  crossOriginResourcePolicy: false
+}));
+
+// ============================
 // HEALTH CHECK
 // ============================
 
@@ -134,6 +118,21 @@ app.get('/', (req, res) => {
 
     message:
       'Backend running successfully'
+  });
+});
+
+// ============================
+// TEST CORS
+// ============================
+
+app.get('/test-cors', (req, res) => {
+
+  return res.json({
+
+    success: true,
+
+    message:
+      'CORS is working'
   });
 });
 
@@ -162,7 +161,7 @@ db.getConnection((err, connection) => {
 });
 
 // ============================
-// UPLOAD DIRECTORY
+// UPLOADS DIRECTORY
 // ============================
 
 const uploadDir =
@@ -181,44 +180,45 @@ if (!fs.existsSync(uploadDir)) {
 // MULTER STORAGE
 // ============================
 
-const storage = multer.diskStorage({
+const storage =
+  multer.diskStorage({
 
-  destination: (
+    destination: (
 
-    req,
-    file,
-    cb
+      req,
+      file,
+      cb
 
-  ) => {
+    ) => {
 
-    cb(null, uploadDir);
-  },
+      cb(null, uploadDir);
+    },
 
-  filename: (
+    filename: (
 
-    req,
-    file,
-    cb
+      req,
+      file,
+      cb
 
-  ) => {
+    ) => {
 
-    const uniqueName =
+      const uniqueName =
 
-      Date.now() +
+        Date.now() +
 
-      '-' +
+        '-' +
 
-      Math.round(
-        Math.random() * 1e9
-      ) +
+        Math.round(
+          Math.random() * 1e9
+        ) +
 
-      path.extname(
-        file.originalname
-      );
+        path.extname(
+          file.originalname
+        );
 
-    cb(null, uniqueName);
-  }
-});
+      cb(null, uniqueName);
+    }
+  });
 
 // ============================
 // FILE FILTER
@@ -541,7 +541,7 @@ app.use((
 
 ) => {
 
-  console.error(err.stack);
+  console.error(err);
 
   return res.status(500).json({
 

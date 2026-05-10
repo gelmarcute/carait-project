@@ -31,6 +31,14 @@ export const AuthProvider = ({
 
     try {
 
+      // ✅ Check kung may API URL
+      if (!API_URL) {
+        console.log("❌ VITE_API_URL is undefined! Check your .env file or Vercel environment variables.");
+        return false;
+      }
+
+      console.log("📤 Sending to:", `${API_URL}/api/auth/login`);
+
       const response = await fetch(
         `${API_URL}/api/auth/login`,
         {
@@ -48,9 +56,16 @@ export const AuthProvider = ({
         }
       );
 
+      // ✅ Check kung nag-respond ang server
+      if (!response.ok) {
+        const errData = await response.json();
+        console.log("❌ Server error:", errData.error);
+        return false;
+      }
+
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (data.success) {
 
         localStorage.setItem(
           "token",
@@ -64,17 +79,19 @@ export const AuthProvider = ({
 
         setUser(data.user);
 
+        console.log("✅ LOGIN SUCCESS");
+
         return true;
       }
 
-      console.log(data.error);
+      console.log("❌ Login failed:", data.error);
 
       return false;
 
-    } catch (error) {
+    } catch (error: any) {
 
-      console.log("❌ SERVER ERROR");
-      console.log(error);
+      console.log("❌ FETCH ERROR:", error.message);
+      console.log("💡 Possible causes: Wrong API URL, server is down, or CORS issue");
 
       return false;
     }

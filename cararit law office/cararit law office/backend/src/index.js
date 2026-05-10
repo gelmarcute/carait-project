@@ -50,11 +50,9 @@ app.use(
 // ============================
 
 const allowedOrigins = [
-
+  'https://carait-project-gelmarcutes-projects.vercel.app', // ✅ Idinagdag ang Vercel URL
   'https://caraitoffice.netlify.app',
-
   'http://localhost:5173',
-
   'http://localhost:3000'
 ];
 

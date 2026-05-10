@@ -46,12 +46,15 @@ const allowedOrigins = [
 ];
 
 // ============================
-// ✅ MANUAL CORS — KAILANGAN
-// ITONG PINAKA-UNA BAGO LAHAT
+// ✅ MANUAL CORS
+// KAILANGAN ITO PINAKA-UNA
 // ============================
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+
+  // ✅ Log para makita sa Railway
+  console.log(`🔍 ${req.method} ${req.path} | Origin: ${origin}`);
 
   if (!origin || allowedOrigins.includes(origin)) {
     res.setHeader(
@@ -75,8 +78,9 @@ app.use((req, res, next) => {
     'Content-Type, Authorization, X-Requested-With'
   );
 
-  // ✅ Agad na sagutin ang preflight
+  // ✅ Agad sagutin ang preflight
   if (req.method === 'OPTIONS') {
+    console.log('✅ OPTIONS preflight handled for:', origin);
     return res.sendStatus(204);
   }
 
@@ -88,7 +92,7 @@ app.use((req, res, next) => {
 // ============================
 
 app.use(cors({
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
     console.log('❌ BLOCKED CORS:', origin);

@@ -11,7 +11,7 @@ import { toast } from "sonner";
 // ============================
 // API URL (Tanggalin ang extra slash sa dulo kung meron)
 // ============================
-const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, "");
+const API_URL = "https://carait-project-production.up.railway.app";
 
 // ============================
 // AXIOS INSTANCE

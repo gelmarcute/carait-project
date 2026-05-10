@@ -2,32 +2,15 @@ require('dotenv').config();
 
 const express = require('express');
 const helmet = require('helmet');
+const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// ============================
-// DATABASE
-// ============================
-
 const db = require('./models/db');
-
-// ============================
-// CONTROLLERS / HELPERS
-// ============================
-
-const { addActivityLog } =
-  require('./controllers/logsController');
-
-const { sendEmail } =
-  require('./utils/emailHelper');
-
-const { startTaskScheduler } =
-  require('./utils/scheduler');
-
-// ============================
-// EXPRESS APP
-// ============================
+const { addActivityLog } = require('./controllers/logsController');
+const { sendEmail } = require('./utils/emailHelper');
+const { startTaskScheduler } = require('./utils/scheduler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -45,37 +28,25 @@ const allowedOrigins = [
 ];
 
 // ============================
-// ✅ MANUAL CORS ONLY
-// (Inalis ang cors package —
-// hindi compatible sa Express 5)
+// ✅ CORS — Express 4 compatible
 // ============================
 
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    console.log('❌ BLOCKED CORS:', origin);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  optionsSuccessStatus: 200
+};
 
-  console.log(`🔍 ${req.method} ${req.path} | Origin: ${origin}`);
-
-  // ✅ Always set CORS headers
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (!origin) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-  }
-
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept');
-  res.setHeader('Vary', 'Origin');
-
-  // ✅ Respond immediately to preflight
-  if (req.method === 'OPTIONS') {
-    console.log('✅ OPTIONS preflight handled for:', origin);
-    res.status(204).end();
-    return;
-  }
-
-  next();
-});
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // ============================
 // BODY PARSER
@@ -88,35 +59,22 @@ app.use(express.urlencoded({ extended: true }));
 // SECURITY
 // ============================
 
-app.use(helmet({
-  crossOriginResourcePolicy: false,
-  crossOriginOpenerPolicy: false,
-}));
+app.use(helmet({ crossOriginResourcePolicy: false }));
 
 // ============================
 // HEALTH CHECK
 // ============================
 
 app.get('/', (req, res) => {
-  return res.json({
-    success: true,
-    message: 'Backend running successfully'
-  });
+  return res.json({ success: true, message: 'Backend running successfully' });
 });
-
-// ============================
-// TEST CORS
-// ============================
 
 app.get('/test-cors', (req, res) => {
-  return res.json({
-    success: true,
-    message: 'CORS is working'
-  });
+  return res.json({ success: true, message: 'CORS is working' });
 });
 
 // ============================
-// DATABASE CONNECTION TEST
+// DATABASE
 // ============================
 
 db.getConnection((err, connection) => {
@@ -130,7 +88,7 @@ db.getConnection((err, connection) => {
 });
 
 // ============================
-// UPLOADS DIRECTORY
+// UPLOADS
 // ============================
 
 const uploadDir = path.join(__dirname, 'uploads');
@@ -139,51 +97,29 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// ============================
-// MULTER STORAGE
-// ============================
-
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadDir);
-  },
+  destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {
     const uniqueName =
-      Date.now() +
-      '-' +
+      Date.now() + '-' +
       Math.round(Math.random() * 1e9) +
       path.extname(file.originalname);
     cb(null, uniqueName);
   }
 });
 
-// ============================
-// FILE FILTER
-// ============================
-
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|pdf/;
-
-  const extname = allowedTypes.test(
-    path.extname(file.originalname).toLowerCase()
-  );
-
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype =
     file.mimetype === 'image/jpeg' ||
     file.mimetype === 'image/jpg' ||
     file.mimetype === 'image/png' ||
     file.mimetype === 'application/pdf';
 
-  if (extname && mimetype) {
-    return cb(null, true);
-  }
-
+  if (extname && mimetype) return cb(null, true);
   return cb(new Error('Only JPG, PNG, PDF files are allowed'));
 };
-
-// ============================
-// MULTER
-// ============================
 
 const upload = multer({
   storage,
@@ -201,30 +137,11 @@ app.use('/uploads', express.static(uploadDir));
 // ROUTES
 // ============================
 
-const userRoutes =
-  require('./routes/userRoutes');
-
-const logRoutes =
-  require('./routes/logsRoutes');
-
-const inventoryRoutes =
-  require('./routes/inventoryRoutes');
-
-const scheduleRoutes =
-  require('./routes/scheduleRoutes');
-
-const authRoutes =
-  require('./routes/authRoutes');
-
-// ============================
-// API ROUTES
-// ============================
-
-app.use('/api/users', userRoutes);
-app.use('/api/logs', logRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/schedules', scheduleRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/logs', require('./routes/logsRoutes'));
+app.use('/api/inventory', require('./routes/inventoryRoutes'));
+app.use('/api/schedules', require('./routes/scheduleRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
 
 // ============================
 // SOLICITATIONS
@@ -239,23 +156,11 @@ app.post(
   (req, res) => {
     try {
       const data = req.body;
-
-      const docFile =
-        req.files?.documentImage?.[0]?.filename || null;
-
-      const personFile =
-        req.files?.personImage?.[0]?.filename || null;
-
-      const baseUrl =
-        `${req.protocol}://${req.get('host')}`;
-
-      const docUrl = docFile
-        ? `${baseUrl}/uploads/${docFile}`
-        : null;
-
-      const personUrl = personFile
-        ? `${baseUrl}/uploads/${personFile}`
-        : null;
+      const docFile = req.files?.documentImage?.[0]?.filename || null;
+      const personFile = req.files?.personImage?.[0]?.filename || null;
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const docUrl = docFile ? `${baseUrl}/uploads/${docFile}` : null;
+      const personUrl = personFile ? `${baseUrl}/uploads/${personFile}` : null;
 
       const sql = `
         INSERT INTO solicitations (
@@ -263,32 +168,20 @@ app.post(
           requisitorName, contactNo, requisitorDistrict,
           requisitorBarangay, remarks, documentImageUrl,
           personImageUrl, status
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `;
 
       const values = [
-        data.userId || null,
-        data.event,
-        data.date,
-        data.request,
-        data.venue,
-        data.requisitorName,
-        data.contactNo,
-        data.requisitorDistrict,
-        data.requisitorBarangay,
-        data.remarks,
-        docUrl,
-        personUrl
+        data.userId || null, data.event, data.date, data.request,
+        data.venue, data.requisitorName, data.contactNo,
+        data.requisitorDistrict, data.requisitorBarangay,
+        data.remarks, docUrl, personUrl
       ];
 
       db.query(sql, values, (err, result) => {
         if (err) {
           console.error(err);
-          return res.status(500).json({
-            success: false,
-            error: err.message
-          });
+          return res.status(500).json({ success: false, error: err.message });
         }
 
         addActivityLog(
@@ -305,27 +198,21 @@ app.post(
 
     } catch (error) {
       console.error(error);
-      return res.status(500).json({
-        success: false,
-        error: 'Server Error'
-      });
+      return res.status(500).json({ success: false, error: 'Server Error' });
     }
   }
 );
 
 // ============================
-// 404 ROUTE
+// 404
 // ============================
 
 app.use((req, res) => {
-  return res.status(404).json({
-    success: false,
-    error: 'Route not found'
-  });
+  return res.status(404).json({ success: false, error: 'Route not found' });
 });
 
 // ============================
-// GLOBAL ERROR HANDLER
+// ERROR HANDLER
 // ============================
 
 app.use((err, req, res, next) => {
@@ -337,14 +224,10 @@ app.use((err, req, res, next) => {
 });
 
 // ============================
-// START TASK SCHEDULER
+// START
 // ============================
 
 startTaskScheduler();
-
-// ============================
-// START SERVER
-// ============================
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);

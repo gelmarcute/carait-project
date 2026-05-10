@@ -17,11 +17,16 @@ const API_URL = "https://carait-project-production.up.railway.app";
 // AXIOS INSTANCE
 // ============================
 const API = axios.create({
+
   baseURL: API_URL,
+
   headers: {
-    "Content-Type": "application/json",
+    "Content-Type": "application/json"
   },
-  timeout: 30000,
+
+  withCredentials: false,
+
+  timeout: 30000
 });
 
 const Login = () => {

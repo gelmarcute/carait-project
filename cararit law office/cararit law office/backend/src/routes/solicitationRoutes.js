@@ -1,55 +1,79 @@
-// Dummy database array for now
-let solicitationsDB = []; // You can replace with real DB (Mongo/Mysql)
+const express = require("express");
+const router = express.Router();
 
+const multer = require("multer");
+const solicitationController = require("../controllers/solicitationController");
 
-exports.getSolicitations = (req, res) => {
-  res.json(solicitationsDB);
-};
+// ==========================
+// MULTER
+// ==========================
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
 
-exports.createSolicitation = (req, res) => {
-  try {
-    const data = req.body;
+  filename: (req, file, cb) => {
+    cb(
+      null,
+      Date.now() + "-" + file.originalname
+    );
+  },
+});
 
-    const docImageFile = req.files?.documentImage?.[0]?.filename || null;
-    const personImageFile = req.files?.personImage?.[0]?.filename || null;
+const upload = multer({ storage });
 
-    const documentImageUrl = docImageFile ? `http://localhost:3000/uploads/${docImageFile}` : null;
-    const personImageUrl = personImageFile ? `http://localhost:3000/uploads/${personImageFile}` : null;
+// ==========================
+// SOLICITATIONS
+// ==========================
+router.get(
+  "/",
+  solicitationController.getSolicitations
+);
 
-    const newSolicitation = {
-      id: Date.now().toString(),
-      ...data,
-      documentImageUrl,
-      personImageUrl,
-      status: 'pending',
-      createdAt: new Date().toISOString()
-    };
+router.post(
+  "/",
+  upload.fields([
+    { name: "documentImage", maxCount: 1 },
+    { name: "personImage", maxCount: 1 },
+  ]),
+  solicitationController.createSolicitation
+);
 
-    solicitationsDB.push(newSolicitation);
+router.put(
+  "/:id/status",
+  solicitationController.updateSolicitationStatus
+);
 
-    res.status(201).json({
-      message: 'Solicitation created successfully',
-      data: newSolicitation
-    });
-  } catch (error) {
-    console.error('Error creating solicitation:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
+router.delete(
+  "/:id",
+  solicitationController.deleteSolicitation
+);
 
-exports.updateSolicitationStatus = (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
+// ==========================
+// MEDICAL REQUESTS
+// ==========================
+router.get(
+  "/medical-requests",
+  solicitationController.getMedicalRequests
+);
 
-  const index = solicitationsDB.findIndex(s => s.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Not found' });
+router.post(
+  "/medical-requests",
+  upload.fields([
+    { name: "documentImage", maxCount: 1 },
+    { name: "personImage", maxCount: 1 },
+  ]),
+  solicitationController.createMedicalRequest
+);
 
-  solicitationsDB[index].status = status || solicitationsDB[index].status;
-  res.json({ message: 'Status updated', data: solicitationsDB[index] });
-};
+router.put(
+  "/medical-requests/:id/status",
+  solicitationController.updateMedicalRequestStatus
+);
 
-exports.deleteSolicitation = (req, res) => {
-  const { id } = req.params;
-  solicitationsDB = solicitationsDB.filter(s => s.id !== id);
-  res.json({ message: 'Solicitation deleted' });
-};
+router.delete(
+  "/medical-requests/:id",
+  solicitationController.deleteMedicalRequest
+);
+
+module.exports = router;

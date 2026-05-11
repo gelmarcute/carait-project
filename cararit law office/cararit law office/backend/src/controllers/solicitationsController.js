@@ -1,60 +1,214 @@
-const db = require('../models/db'); 
-const { addActivityLog } = require('./logsController'); 
+let solicitationsDB = [];
+let medicalRequestsDB = [];
 
+// ==========================
+// GET ALL SOLICITATIONS
+// ==========================
 exports.getSolicitations = (req, res) => {
-  db.query('SELECT * FROM solicitations ORDER BY createdAt DESC', (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(results);
-  });
+  try {
+    const { userId, role } = req.query;
+
+    if (role === "admin") {
+      return res.json(solicitationsDB);
+    }
+
+    const filtered = solicitationsDB.filter(
+      (item) => item.userId === userId
+    );
+
+    res.json(filtered);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch solicitations" });
+  }
 };
 
+// ==========================
+// CREATE SOLICITATION
+// ==========================
 exports.createSolicitation = (req, res) => {
-  const data = req.body;
-  
-  const docFile = req.files?.documentImage?.[0]?.filename || null;
-  const personFile = req.files?.personImage?.[0]?.filename || null;
+  try {
+    const data = req.body;
 
-  const docUrl = docFile ? `http://localhost:3000/uploads/${docFile}` : null;
-  const personUrl = personFile ? `http://localhost:3000/uploads/${personFile}` : null;
+    const docImageFile =
+      req.files?.documentImage?.[0]?.filename || null;
 
-  const sql = `
-    INSERT INTO solicitations 
-    (userId, event, date, request, venue, requisitorName, contactNo, requisitorDistrict, requisitorBarangay, remarks, documentImageUrl, personImageUrl, status) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
-  `;
+    const personImageFile =
+      req.files?.personImage?.[0]?.filename || null;
 
-  const values = [
-    data.userId || null, data.event, data.date, data.request, data.venue,
-    data.requisitorName, data.contactNo, data.requisitorDistrict, data.requisitorBarangay,
-    data.remarks, docUrl, personUrl
-  ];
+    const newSolicitation = {
+      id: Date.now().toString(),
+      ...data,
+      documentImageUrl: docImageFile
+        ? `http://localhost:3000/uploads/${docImageFile}`
+        : null,
+      personImageUrl: personImageFile
+        ? `http://localhost:3000/uploads/${personImageFile}`
+        : null,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
 
-  db.query(sql, values, (err, result) => {
-    if (err) return res.status(500).json({ error: err.message });
+    solicitationsDB.push(newSolicitation);
 
-    addActivityLog(`Added a new solicitation for ${data.requisitorName}`, data.requisitorName || 'System');
-    res.status(201).json({ message: 'Solicitation created successfully', insertId: result.insertId });
-  });
+    res.status(201).json({
+      message: "Solicitation created",
+      data: newSolicitation,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Create failed" });
+  }
 };
 
+// ==========================
+// UPDATE STATUS
+// ==========================
 exports.updateSolicitationStatus = (req, res) => {
-  const { status, note, user } = req.body;
-  
-  db.query('UPDATE solicitations SET status = ?, note = ? WHERE id = ?', [status, note || null, req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    addActivityLog(`Updated solicitation status to ${status}`, user || 'Admin');
-    res.json({ message: 'Solicitation status updated' });
-  });
+  try {
+    const { id } = req.params;
+    const { status, note } = req.body;
+
+    const item = solicitationsDB.find((s) => s.id === id);
+
+    if (!item) {
+      return res.status(404).json({
+        error: "Solicitation not found",
+      });
+    }
+
+    item.status = status || item.status;
+    item.note = note || item.note;
+
+    res.json({
+      message: "Updated successfully",
+      data: item,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Update failed" });
+  }
 };
 
+// ==========================
+// DELETE
+// ==========================
 exports.deleteSolicitation = (req, res) => {
-  const { user } = req.body;
+  try {
+    const { id } = req.params;
 
-  db.query('DELETE FROM solicitations WHERE id = ?', [req.params.id], (err) => {
-    if (err) return res.status(500).json({ error: err.message });
-    
-    addActivityLog(`Deleted solicitation ID: ${req.params.id}`, user || 'Admin');
-    res.json({ message: 'Deleted successfully' });
-  });
+    solicitationsDB = solicitationsDB.filter(
+      (item) => item.id !== id
+    );
+
+    res.json({
+      message: "Deleted successfully",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Delete failed" });
+  }
+};
+
+// =====================================================
+// MEDICAL REQUESTS
+// =====================================================
+
+exports.getMedicalRequests = (req, res) => {
+  try {
+    const { userId, role } = req.query;
+
+    if (role === "admin") {
+      return res.json(medicalRequestsDB);
+    }
+
+    const filtered = medicalRequestsDB.filter(
+      (item) => item.userId === userId
+    );
+
+    res.json(filtered);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch medical requests" });
+  }
+};
+
+exports.createMedicalRequest = (req, res) => {
+  try {
+    const data = req.body;
+
+    const docImageFile =
+      req.files?.documentImage?.[0]?.filename || null;
+
+    const personImageFile =
+      req.files?.personImage?.[0]?.filename || null;
+
+    const newRequest = {
+      id: Date.now().toString(),
+      ...data,
+      documentImageUrl: docImageFile
+        ? `http://localhost:3000/uploads/${docImageFile}`
+        : null,
+      personImageUrl: personImageFile
+        ? `http://localhost:3000/uploads/${personImageFile}`
+        : null,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+    };
+
+    medicalRequestsDB.push(newRequest);
+
+    res.status(201).json({
+      message: "Medical request created",
+      data: newRequest,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Create failed" });
+  }
+};
+
+exports.updateMedicalRequestStatus = (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, note } = req.body;
+
+    const item = medicalRequestsDB.find(
+      (m) => m.id === id
+    );
+
+    if (!item) {
+      return res.status(404).json({
+        error: "Medical request not found",
+      });
+    }
+
+    item.status = status || item.status;
+    item.note = note || item.note;
+
+    res.json({
+      message: "Updated",
+      data: item,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Update failed" });
+  }
+};
+
+exports.deleteMedicalRequest = (req, res) => {
+  try {
+    const { id } = req.params;
+
+    medicalRequestsDB = medicalRequestsDB.filter(
+      (m) => m.id !== id
+    );
+
+    res.json({
+      message: "Deleted",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Delete failed" });
+  }
 };

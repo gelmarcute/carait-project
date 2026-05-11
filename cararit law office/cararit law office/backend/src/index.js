@@ -12,26 +12,18 @@ const fs = require('fs');
 // ============================
 
 process.on('uncaughtException', (err) => {
-
-  console.error(
-    '❌ UNCAUGHT EXCEPTION:',
-    err
-  );
+  console.error('❌ UNCAUGHT EXCEPTION:', err);
 });
 
 process.on('unhandledRejection', (err) => {
-
-  console.error(
-    '❌ UNHANDLED REJECTION:',
-    err
-  );
+  console.error('❌ UNHANDLED REJECTION:', err);
 });
 
 // ============================
 // DATABASE
 // ============================
 
-const db = require('../models/db');
+const db = require('./models/db');
 
 // ============================
 // CONTROLLERS / HELPERS
@@ -39,15 +31,11 @@ const db = require('../models/db');
 
 const {
   addActivityLog
-} = require('../controllers/logsController');
-
-const {
-  sendEmail
-} = require('../utils/emailHelper');
+} = require('./controllers/logsController');
 
 const {
   startTaskScheduler
-} = require('../utils/scheduler');
+} = require('./utils/scheduler');
 
 // ============================
 // EXPRESS APP
@@ -55,8 +43,7 @@ const {
 
 const app = express();
 
-const PORT =
-  process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
 // ============================
 // TRUST PROXY
@@ -69,118 +56,73 @@ app.set('trust proxy', 1);
 // ============================
 
 const allowedOrigins = [
-
   'https://caraitoffice.netlify.app',
-
   'https://carait-project-gelmarcutes-projects.vercel.app',
-
   'https://carait-project-git-main-gelmarcutes-projects.vercel.app',
-
+  'https://carait-project.vercel.app',
   'http://localhost:5173',
-
   'http://localhost:3000',
-
   'http://localhost:8080'
 ];
 
 // ============================
-// MANUAL CORS FIX
-// ============================
-
-app.use((req, res, next) => {
-
-  const origin = req.headers.origin;
-
-  if (
-    allowedOrigins.includes(origin)
-  ) {
-
-    res.header(
-      'Access-Control-Allow-Origin',
-      origin
-    );
-  }
-
-  res.header(
-    'Access-Control-Allow-Headers',
-    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
-  );
-
-  res.header(
-    'Access-Control-Allow-Methods',
-    'GET, POST, PUT, DELETE, OPTIONS'
-  );
-
-  res.header(
-    'Access-Control-Allow-Credentials',
-    'true'
-  );
-
-  res.header(
-    'Vary',
-    'Origin'
-  );
-
-  // Handle OPTIONS request
-
-  if (req.method === 'OPTIONS') {
-
-    return res.sendStatus(200);
-  }
-
-  next();
-});
-
-// ============================
-// EXPRESS CORS
+// CORS
 // ============================
 
 app.use(cors({
-
-  origin: function(origin, callback) {
+  origin: function (origin, callback) {
 
     // Allow Postman / Mobile Apps
 
     if (!origin) {
-
       return callback(null, true);
     }
 
-    // Allow frontend domains
+    // Allow Frontend Domains
 
-    if (
-      allowedOrigins.includes(origin)
-    ) {
-
+    if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    console.log(
-      '❌ BLOCKED ORIGIN:',
-      origin
-    );
+    console.log('❌ BLOCKED ORIGIN:', origin);
 
     return callback(
       new Error('Not allowed by CORS')
     );
   },
 
-  credentials: true
+  credentials: true,
+
+  methods: [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+    'OPTIONS'
+  ],
+
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization'
+  ]
 }));
+
+// ============================
+// IMPORTANT FOR PREFLIGHT
+// ============================
+
+app.options('*', cors());
 
 // ============================
 // BODY PARSER
 // ============================
 
 app.use(express.json({
-
   limit: '10mb'
 }));
 
 app.use(express.urlencoded({
-
   extended: true,
-
   limit: '10mb'
 }));
 
@@ -189,7 +131,6 @@ app.use(express.urlencoded({
 // ============================
 
 app.use(helmet({
-
   crossOriginResourcePolicy: false
 }));
 
@@ -216,8 +157,7 @@ app.get('/', (req, res) => {
 
     success: true,
 
-    message:
-      'Backend running successfully'
+    message: 'Backend running successfully'
   });
 });
 
@@ -231,8 +171,7 @@ app.get('/api/test', (req, res) => {
 
     success: true,
 
-    message:
-      'Backend working'
+    message: 'Backend working'
   });
 });
 
@@ -272,7 +211,6 @@ const uploadDir = path.join(
 if (!fs.existsSync(uploadDir)) {
 
   fs.mkdirSync(uploadDir, {
-
     recursive: true
   });
 }
@@ -281,62 +219,44 @@ if (!fs.existsSync(uploadDir)) {
 // MULTER STORAGE
 // ============================
 
-const storage =
-  multer.diskStorage({
+const storage = multer.diskStorage({
 
-    destination: (
-      req,
-      file,
-      cb
-    ) => {
+  destination: (req, file, cb) => {
 
-      cb(null, uploadDir);
-    },
+    cb(null, uploadDir);
+  },
 
-    filename: (
-      req,
-      file,
-      cb
-    ) => {
+  filename: (req, file, cb) => {
 
-      const uniqueName =
+    const uniqueName =
 
-        Date.now() +
+      Date.now() +
 
-        '-' +
+      '-' +
 
-        Math.round(
-          Math.random() * 1e9
-        ) +
+      Math.round(Math.random() * 1e9) +
 
-        path.extname(
-          file.originalname
-        );
+      path.extname(file.originalname);
 
-      cb(null, uniqueName);
-    }
-  });
+    cb(null, uniqueName);
+  }
+});
 
 // ============================
 // FILE FILTER
 // ============================
 
-const fileFilter = (
-  req,
-  file,
-  cb
-) => {
+const fileFilter = (req, file, cb) => {
 
   const allowedTypes =
     /jpeg|jpg|png|pdf/;
 
-  const extname =
-    allowedTypes.test(
+  const extname = allowedTypes.test(
 
-      path.extname(
-        file.originalname
-      ).toLowerCase()
-    );
+    path.extname(
+      file.originalname
+    ).toLowerCase()
+  );
 
   const mimetype =
 
@@ -348,10 +268,7 @@ const fileFilter = (
 
     file.mimetype === 'application/pdf';
 
-  if (
-    extname &&
-    mimetype
-  ) {
+  if (extname && mimetype) {
 
     return cb(null, true);
   }
@@ -373,7 +290,6 @@ const upload = multer({
   storage,
 
   limits: {
-
     fileSize:
       10 * 1024 * 1024
   },
@@ -386,9 +302,7 @@ const upload = multer({
 // ============================
 
 app.use(
-
   '/uploads',
-
   express.static(uploadDir)
 );
 
@@ -397,19 +311,19 @@ app.use(
 // ============================
 
 const userRoutes =
-  require('../routes/userRoutes');
+  require('./routes/userRoutes');
 
 const logRoutes =
-  require('../routes/logsRoutes');
+  require('./routes/logsRoutes');
 
 const inventoryRoutes =
-  require('../routes/inventoryRoutes');
+  require('./routes/inventoryRoutes');
 
 const scheduleRoutes =
-  require('../routes/scheduleRoutes');
+  require('./routes/scheduleRoutes');
 
 const authRoutes =
-  require('../routes/authRoutes');
+  require('./routes/authRoutes');
 
 // ============================
 // API ROUTES
@@ -465,45 +379,29 @@ app.post(
 
     try {
 
-      const data =
-        req.body;
+      const data = req.body;
 
       const docFile =
-
-        req.files?.documentImage?.[0]?.filename ||
-
-        null;
+        req.files?.documentImage?.[0]?.filename || null;
 
       const personFile =
-
-        req.files?.personImage?.[0]?.filename ||
-
-        null;
+        req.files?.personImage?.[0]?.filename || null;
 
       const baseUrl =
-
         `${req.protocol}://${req.get('host')}`;
 
       const docUrl =
-
         docFile
-
           ? `${baseUrl}/uploads/${docFile}`
-
           : null;
 
       const personUrl =
-
         personFile
-
           ? `${baseUrl}/uploads/${personFile}`
-
           : null;
 
       const sql = `
-
         INSERT INTO solicitations (
-
           userId,
           event,
           date,
@@ -517,9 +415,7 @@ app.post(
           documentImageUrl,
           personImageUrl,
           status
-
         )
-
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `;
 
@@ -551,11 +447,8 @@ app.post(
       ];
 
       db.query(
-
         sql,
-
         values,
-
         (err, result) => {
 
           if (err) {
@@ -622,14 +515,7 @@ app.use((req, res) => {
 // GLOBAL ERROR HANDLER
 // ============================
 
-app.use((
-
-  err,
-  req,
-  res,
-  next
-
-) => {
+app.use((err, req, res, next) => {
 
   console.error(
     '❌ GLOBAL ERROR:',
@@ -641,9 +527,7 @@ app.use((
     success: false,
 
     error:
-
       err.message ||
-
       'Something went wrong'
   });
 });
@@ -659,15 +543,11 @@ startTaskScheduler();
 // ============================
 
 app.listen(
-
   PORT,
-
   '0.0.0.0',
-
   () => {
 
     console.log(
-
       `🚀 Server running on port ${PORT}`
     );
   }

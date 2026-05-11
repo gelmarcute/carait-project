@@ -24,7 +24,7 @@ process.on('unhandledRejection', (err) => {
 // ============================
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // ============================
 // DATABASE
@@ -51,44 +51,93 @@ const {
 app.set('trust proxy', 1);
 
 // ============================
-// BODY PARSER
-// ============================
-
-app.use(express.json({
-  limit: '10mb'
-}));
-
-app.use(express.urlencoded({
-  extended: true,
-  limit: '10mb'
-}));
-
-// ============================
 // SECURITY
 // ============================
 
-app.use(helmet({
-  crossOriginResourcePolicy: false
-}));
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false
+  })
+);
 
 // ============================
-// CORS
+// CORS FIX FINAL
 // ============================
 
-app.use(cors({
-  origin: true,
-  credentials: true
-}));
+const corsOptions = {
+
+  origin: (origin, callback) => {
+
+    // Allow Postman / Mobile Apps
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    // Allow localhost
+    if (
+      origin.includes('localhost')
+    ) {
+      return callback(null, true);
+    }
+
+    // Allow ALL vercel domains
+    if (
+      origin.includes('.vercel.app')
+    ) {
+      return callback(null, true);
+    }
+
+    // Allow ALL netlify domains
+    if (
+      origin.includes('.netlify.app')
+    ) {
+      return callback(null, true);
+    }
+
+    console.log(
+      '✅ ALLOWED ORIGIN:',
+      origin
+    );
+
+    return callback(null, true);
+  },
+
+  credentials: true,
+
+  methods: [
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+    'OPTIONS'
+  ],
+
+  allowedHeaders: [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization'
+  ]
+};
+
+// APPLY CORS
+app.use(cors(corsOptions));
+
+// HANDLE PREFLIGHT
+app.options('*', cors(corsOptions));
 
 // ============================
-// MANUAL HEADERS
+// MANUAL HEADERS FIX
 // ============================
 
 app.use((req, res, next) => {
 
+  const origin = req.headers.origin;
+
   res.header(
     'Access-Control-Allow-Origin',
-    req.headers.origin || '*'
+    origin || '*'
   );
 
   res.header(
@@ -106,12 +155,30 @@ app.use((req, res, next) => {
     'true'
   );
 
+  res.header(
+    'Vary',
+    'Origin'
+  );
+
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
 
   next();
 });
+
+// ============================
+// BODY PARSER
+// ============================
+
+app.use(express.json({
+  limit: '10mb'
+}));
+
+app.use(express.urlencoded({
+  extended: true,
+  limit: '10mb'
+}));
 
 // ============================
 // LOGGER
@@ -266,7 +333,7 @@ const upload = multer({
 });
 
 // ============================
-// STATIC
+// STATIC FILES
 // ============================
 
 app.use(
@@ -453,7 +520,7 @@ app.use((req, res) => {
 });
 
 // ============================
-// ERROR HANDLER
+// GLOBAL ERROR HANDLER
 // ============================
 
 app.use((err, req, res, next) => {
@@ -476,9 +543,14 @@ app.use((err, req, res, next) => {
 // ============================
 
 try {
+
   startTaskScheduler();
+
 } catch (err) {
-  console.log('⚠️ Scheduler skipped');
+
+  console.log(
+    '⚠️ Scheduler skipped'
+  );
 }
 
 // ============================

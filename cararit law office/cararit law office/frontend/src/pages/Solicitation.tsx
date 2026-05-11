@@ -7,8 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Archive, Trash2, Check, X, Stethoscope, Mail, Image as ImageIcon, Filter, ExternalLink, Paperclip } from "lucide-react";
+import { Plus, Archive, Trash2, Check, X,ImageIcon, Filter, ExternalLink, Paperclip } from "lucide-react";
 import { toast } from "sonner";
 
 const lagunaData: Record<string, string[]> = {
@@ -27,18 +26,39 @@ const addLog = (action: string, userName: string) => {
 };
 
 interface SolicitationRequest {
-  id: string; userId: string; event: string; date: string; request: string;
-  venue: string; note: string; remarks: string; filledOutBy: string;
-  requisitorDistrict: string; requisitorBarangay: string; requisitorName: string;
-  contactNo: string; status: "pending" | "approved" | "denied" | "archived";
-  createdAt: string; documentImageUrl?: string; personImageUrl?: string;
+  id: string;
+  userId: string;
+  event: string;
+  date: string;
+  request: string;
+  venue: string;
+  note: string;
+  remarks: string;
+  filledOutBy: string;
+  requisitorDistrict: string;
+  requisitorBarangay: string;
+  requisitorName: string;
+  contactNo: string;
+  status: "pending" | "approved" | "denied" | "archived";
+  createdAt: string;
+  documentImageUrl?: string;
+  personImageUrl?: string;
 }
 
 interface MedicalRequest {
-  id: string; userId: string; patientName: string; medicalIssue: string;
-  requestType: string; date: string; contactNo: string; remarks: string; note: string;
-  status: "pending" | "approved" | "denied" | "archived"; createdAt: string;
-  documentImageUrl?: string; personImageUrl?: string;
+  id: string;
+  userId: string;
+  patientName: string;
+  medicalIssue: string;
+  requestType: string;
+  date: string;
+  contactNo: string;
+  remarks: string;
+  note: string;
+  status: "pending" | "approved" | "denied" | "archived";
+  createdAt: string;
+  documentImageUrl?: string;
+  personImageUrl?: string;
 }
 
 const API_URL = "http://localhost:3000/api/solicitations";
@@ -51,11 +71,10 @@ const initialSolForm = {
 };
 
 const initialMedForm = {
-  patientName: "", medicalIssue: "", requestType: "", date: "",
-  contactNo: "", remarks: "", note: ""
+  patientName: "", medicalIssue: "", requestType: "",
+  date: "", contactNo: "", remarks: "", note: ""
 };
 
-// 🌟 MINIMALIST STATUS DOT COMPONENT
 const StatusBadge = ({ status }: { status: string }) => {
   const colors: Record<string, string> = {
     pending: "bg-amber-500",
@@ -63,6 +82,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     denied: "bg-rose-500",
     archived: "bg-slate-400"
   };
+
   return (
     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-slate-200 dark:border-slate-800 text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 shadow-sm capitalize">
       <span className={`h-1.5 w-1.5 rounded-full ${colors[status] || "bg-slate-500"}`}></span>
@@ -74,10 +94,9 @@ const StatusBadge = ({ status }: { status: string }) => {
 const Solicitation = () => {
   const auth = useAuth();
   const user = auth?.user || null;
-  
   const [activeTab, setActiveTab] = useState("solicitations");
-  const [viewFilter, setViewFilter] = useState("pending"); 
-  
+  const [viewFilter, setViewFilter] = useState("pending");
+
   const [items, setItems] = useState<SolicitationRequest[]>([]);
   const [solOpen, setSolOpen] = useState(false);
   const [solForm, setSolForm] = useState(initialSolForm);
@@ -100,20 +119,45 @@ const Solicitation = () => {
   const fetchData = async () => {
     if (!user) return;
     try {
-      const solRes = await fetch(`${API_URL}?userId=${user.id}&role=${user.role}`);
+      const solRes = await fetch(`${API_URL}?userId=${user.id}&role=${user.role}`, {
+        credentials: "include"
+      });
       if (solRes.ok) {
-         const solData = await solRes.json();
-         setItems(solData.map((item: any) => ({ ...item, date: item.date ? item.date.substring(0, 10) : item.date })));
+        const rawData = await solRes.json();
+        // 🌟 SMART EXTRACTOR: Kunin ang data array
+        const actualData = rawData.data || rawData;
+        const arrayData = Array.isArray(actualData) ? actualData : [];
+        
+        setItems(arrayData.map((item: any) => ({
+          ...item,
+          date: item.date ? String(item.date).substring(0, 10) : item.date
+        })));
       }
-      const medRes = await fetch(`${MED_API_URL}?userId=${user.id}&role=${user.role}`);
+
+      const medRes = await fetch(`${MED_API_URL}?userId=${user.id}&role=${user.role}`, {
+        credentials: "include"
+      });
       if (medRes.ok) {
-         const medData = await medRes.json();
-         setMedItems(medData.map((item: any) => ({ ...item, date: item.date ? item.date.substring(0, 10) : item.date })));
+        const rawData = await medRes.json();
+        // 🌟 SMART EXTRACTOR: Kunin ang data array
+        const actualData = rawData.data || rawData;
+        const arrayData = Array.isArray(actualData) ? actualData : [];
+
+        setMedItems(arrayData.map((item: any) => ({
+          ...item,
+          date: item.date ? String(item.date).substring(0, 10) : item.date
+        })));
       }
-    } catch (error) { console.error("Failed to fetch data:", error); }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    }
   };
 
-  useEffect(() => { fetchData(); }, [user]);
+  useEffect(() => {
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   const handleCreateSol = async () => {
     const { event, date, request, venue, requisitorDistrict, requisitorBarangay, requisitorName, contactNo } = solForm;
@@ -126,15 +170,26 @@ const Solicitation = () => {
     if (solFiles.personImage) formData.append("personImage", solFiles.personImage);
 
     try {
-      const res = await fetch(API_URL, { method: "POST", body: formData });
+      const res = await fetch(API_URL, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
       if (res.ok) {
         toast.success("Solicitation request submitted!");
         addLog(`Created solicitation: ${solForm.event}`, user!.name);
-        fetchData(); setSolOpen(false); setSolForm(initialSolForm); setSolFiles({ documentImage: null, personImage: null }); setViewFilter("pending"); 
+        fetchData();
+        setSolOpen(false);
+        setSolForm(initialSolForm);
+        setSolFiles({ documentImage: null, personImage: null });
+        setViewFilter("pending");
       } else {
-        const errorData = await res.json(); toast.error(`Error: ${errorData.error}`);
+        const errorData = await res.json();
+        toast.error(`Error: ${errorData.error}`);
       }
-    } catch (err) { toast.error("Server error."); }
+    } catch (err) {
+      toast.error("Server error.");
+    }
   };
 
   const handleCreateMed = async () => {
@@ -148,40 +203,54 @@ const Solicitation = () => {
     if (medFiles.personImage) formData.append("personImage", medFiles.personImage);
 
     try {
-      const res = await fetch(MED_API_URL, { method: "POST", body: formData });
+      const res = await fetch(MED_API_URL, {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
       if (res.ok) {
         toast.success("Medical request submitted!");
         addLog(`Created medical request for: ${medForm.patientName}`, user!.name);
-        fetchData(); setMedOpen(false); setMedForm(initialMedForm); setMedFiles({ documentImage: null, personImage: null }); setViewFilter("pending"); 
+        fetchData();
+        setMedOpen(false);
+        setMedForm(initialMedForm);
+        setMedFiles({ documentImage: null, personImage: null });
+        setViewFilter("pending");
       } else {
-        const errorData = await res.json(); toast.error(`Error: ${errorData.error || "Failed to submit"}`);
+        const errorData = await res.json();
+        toast.error(`Error: ${errorData.error || "Failed to submit"}`);
       }
-    } catch (err) { toast.error("Server error."); }
+    } catch (err) {
+      toast.error("Server error.");
+    }
   };
 
   const handleApproveConfirm = async () => {
     if (!itemToApprove || !approveType) return;
     setIsApproving(true);
-
     const url = approveType === "solicitation" ? `${API_URL}/${itemToApprove.id}/status` : `${MED_API_URL}/${itemToApprove.id}/status`;
-
     try {
       const res = await fetch(url, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "approved", note: approvalNote, user: user?.name }),
+        credentials: "include"
       });
       if (res.ok) {
         toast.success(`${approveType === 'medical' ? 'Medical' : 'Solicitation'} Request approved!`);
         addLog(`Approved ${approveType}: ${itemToApprove.event || itemToApprove.patientName}`, user!.name);
-        fetchData(); setApproveModalOpen(false); setItemToApprove(null); setApprovalNote("");
+        fetchData();
+        setApproveModalOpen(false);
+        setItemToApprove(null);
+        setApprovalNote("");
       } else {
         const errorData = await res.json().catch(() => ({}));
         toast.error(`Error: ${errorData.error || errorData.message || "Failed to approve"}`);
       }
-    } catch (err) { 
-        toast.error("Network or Server error. Check your console."); 
+    } catch (err) {
+      toast.error("Network or Server error.");
     } finally {
-        setIsApproving(false);
+      setIsApproving(false);
     }
   };
 
@@ -189,35 +258,41 @@ const Solicitation = () => {
     const url = type === "solicitation" ? `${API_URL}/${item.id}/status` : `${MED_API_URL}/${item.id}/status`;
     try {
       const res = await fetch(url, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, user: user?.name }),
+        credentials: "include"
       });
       if (res.ok) {
         toast.success(`Request ${status === 'archived' ? 'archived' : 'updated'}`);
         addLog(`${status === 'archived' ? 'Archived' : 'Updated'} ${type}: ${item.event || item.patientName}`, user!.name);
         fetchData();
       }
-    } catch (err) { toast.error("Error updating status."); }
+    } catch (err) {
+      toast.error("Error updating status.");
+    }
   };
 
   const handleDelete = async (item: any, type: "solicitation" | "medical") => {
     const url = type === "solicitation" ? `${API_URL}/${item.id}` : `${MED_API_URL}/${item.id}`;
     if (!window.confirm("Are you sure you want to permanently delete this record?")) return;
     try {
-      const res = await fetch(url, { 
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user: user?.name }) 
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: user?.name }),
+        credentials: "include"
       });
       if (res.ok) {
         toast.success("Request permanently deleted");
         addLog(`Deleted ${type}: ${item.event || item.patientName}`, user!.name);
         fetchData();
       }
-    } catch (err) { toast.error("Error deleting request."); }
+    } catch (err) {
+      toast.error("Error deleting request.");
+    }
   };
 
-  // 🌟 MINIMALIST TABLE RENDERER
   const renderTable = (data: any[], type: "solicitation" | "medical") => {
     const isArchived = viewFilter === "archived";
     const filteredData = data.filter(item => item.status === viewFilter);
@@ -226,7 +301,6 @@ const Solicitation = () => {
 
     return (
       <>
-        {/* DESKTOP MINIMAL TABLE */}
         <div className="hidden md:block overflow-x-auto w-full">
           <table className="w-full text-sm text-left">
             <thead className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400">
@@ -284,7 +358,7 @@ const Solicitation = () => {
                           </>
                         )}
                         {item.status !== "archived" && (
-                           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 rounded-full" onClick={() => handleStatusChange(item, "archived", type)} title="Archive"><Archive className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-300 rounded-full" onClick={() => handleStatusChange(item, "archived", type)} title="Archive"><Archive className="h-4 w-4" /></Button>
                         )}
                         {item.status === "archived" && (
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-full" onClick={() => handleDelete(item, type)} title="Delete Permanently"><Trash2 className="h-4 w-4" /></Button>
@@ -298,7 +372,6 @@ const Solicitation = () => {
           </table>
         </div>
 
-        {/* MOBILE MINIMAL LIST */}
         <div className="md:hidden flex flex-col gap-3">
           {filteredData.map((item) => (
             <div key={item.id} className={`bg-transparent border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col gap-3 ${isArchived ? "opacity-60 grayscale" : ""}`}>
@@ -309,11 +382,13 @@ const Solicitation = () => {
                 </div>
                 <StatusBadge status={item.status} />
               </div>
-              
+
               <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                 {type === "solicitation" ? (
                   <p>{item.requisitorName} <span className="text-xs text-slate-400 ml-1">({item.requisitorBarangay})</span></p>
-                ) : ( <p>{item.medicalIssue || "—"}</p> )}
+                ) : (
+                  <p>{item.medicalIssue || "—"}</p>
+                )}
               </div>
 
               <div className="flex justify-between items-center text-xs mt-2 border-t border-slate-100 dark:border-slate-800 pt-3">
@@ -345,18 +420,12 @@ const Solicitation = () => {
 
   return (
     <PageLayout title="📄 Requests Management">
-      
-      {/* MINIMAL TAB HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div className="flex gap-4 border-b border-slate-200 dark:border-slate-800 w-full md:w-auto">
-          <button onClick={() => setActiveTab("solicitations")} className={`pb-2 text-sm font-medium transition-colors ${activeTab === "solicitations" ? "border-b-2 border-blue-500 text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-             Solicitations
-          </button>
-          <button onClick={() => setActiveTab("medical")} className={`pb-2 text-sm font-medium transition-colors ${activeTab === "medical" ? "border-b-2 border-blue-500 text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-             Medical Requests
-          </button>
+          <button onClick={() => setActiveTab("solicitations")} className={`pb-2 text-sm font-medium transition-colors ${activeTab === "solicitations" ? "border-b-2 border-blue-500 text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}> Solicitations </button>
+          <button onClick={() => setActiveTab("medical")} className={`pb-2 text-sm font-medium transition-colors ${activeTab === "medical" ? "border-b-2 border-blue-500 text-slate-800 dark:text-slate-100" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}> Medical Requests </button>
         </div>
-        
+
         <div className="flex items-center gap-3 w-full md:w-auto">
           <Select value={viewFilter} onValueChange={setViewFilter}>
             <SelectTrigger className="h-10 w-full md:w-[160px] bg-transparent border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-xs font-medium">
@@ -385,7 +454,6 @@ const Solicitation = () => {
                   <div><Label className="dark:text-slate-300">Venue *</Label><Input className="h-11 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-lg mt-1" value={solForm.venue} onChange={(e) => setSolForm({ ...solForm, venue: e.target.value })} /></div>
                   <div><Label className="dark:text-slate-300">Requisitor Name *</Label><Input className="h-11 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-lg mt-1" value={solForm.requisitorName} onChange={(e) => setSolForm({ ...solForm, requisitorName: e.target.value })} /></div>
                   <div><Label className="dark:text-slate-300">Contact No *</Label><Input className="h-11 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-lg mt-1" value={solForm.contactNo} onChange={(e) => setSolForm({ ...solForm, contactNo: e.target.value })} /></div>
-                  
                   <div>
                     <Label className="dark:text-slate-300">Document Image</Label>
                     <div className="flex items-center justify-center w-full mt-1">
@@ -397,7 +465,6 @@ const Solicitation = () => {
                       </label>
                     </div>
                   </div>
-                  
                   <div>
                     <Label className="dark:text-slate-300">Person Image</Label>
                     <div className="flex items-center justify-center w-full mt-1">
@@ -409,7 +476,6 @@ const Solicitation = () => {
                       </label>
                     </div>
                   </div>
-
                   <div>
                     <Label className="dark:text-slate-300">City / Municipality *</Label>
                     <Select value={solForm.requisitorDistrict} onValueChange={(val) => setSolForm({ ...solForm, requisitorDistrict: val, requisitorBarangay: "" })}>
@@ -442,7 +508,6 @@ const Solicitation = () => {
                   <div><Label className="dark:text-slate-300">Request Type *</Label><Input className="h-11 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-lg mt-1" value={medForm.requestType} onChange={(e) => setMedForm({ ...medForm, requestType: e.target.value })} /></div>
                   <div><Label className="dark:text-slate-300">Medical Issue</Label><Input className="h-11 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-lg mt-1" value={medForm.medicalIssue} onChange={(e) => setMedForm({ ...medForm, medicalIssue: e.target.value })} /></div>
                   <div className="md:col-span-2"><Label className="dark:text-slate-300">Contact No</Label><Input className="h-11 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-lg mt-1" value={medForm.contactNo} onChange={(e) => setMedForm({ ...medForm, contactNo: e.target.value })} /></div>
-                  
                   <div>
                     <Label className="dark:text-slate-300">Document Image (Prescription/Lab)</Label>
                     <div className="flex items-center justify-center w-full mt-1">
@@ -454,7 +519,6 @@ const Solicitation = () => {
                       </label>
                     </div>
                   </div>
-                  
                   <div>
                     <Label className="dark:text-slate-300">Patient Image</Label>
                     <div className="flex items-center justify-center w-full mt-1">
@@ -466,7 +530,6 @@ const Solicitation = () => {
                       </label>
                     </div>
                   </div>
-
                   <div className="md:col-span-2"><Label className="dark:text-slate-300">Remarks (Optional)</Label><Textarea className="dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 rounded-lg mt-1" value={medForm.remarks} onChange={(e) => setMedForm({ ...medForm, remarks: e.target.value })} /></div>
                   <Button className="w-full md:col-span-2 h-12 mt-4 font-semibold rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 border-none" onClick={handleCreateMed}>SUBMIT REQUEST</Button>
                 </div>
@@ -495,14 +558,14 @@ const Solicitation = () => {
               </div>
               <DialogFooter className="mt-2">
                 <Button className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium border-none" onClick={handleApproveConfirm} disabled={isApproving}>
-                    {isApproving ? "Approving..." : "Confirm Approval"}
+                  {isApproving ? "Approving..." : "Confirm Approval"}
                 </Button>
               </DialogFooter>
             </div>
           )}
         </DialogContent>
       </Dialog>
-      
+
       {/* NOTE VIEWER MODAL */}
       <Dialog open={viewDetail.isOpen} onOpenChange={(isOpen) => setViewDetail({ ...viewDetail, isOpen })}>
         <DialogContent className="w-[95vw] sm:max-w-sm rounded-2xl bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800">

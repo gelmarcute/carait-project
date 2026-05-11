@@ -5,17 +5,15 @@ const AuthContext = createContext<any>(null);
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: any) => {
-  // ✅ I-load agad ang user kung may naka-save na sa localStorage
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
   // ======================
-  // API URL
+  // API URL (BALIK LOCALHOST)
   // ======================
-  // Naglagay ako ng fallback URL para kung makalimutan mong ilagay sa .env, gagana pa rin
-  const API_URL = import.meta.env.VITE_API_URL || "https://carait-project-production.up.railway.app";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   // ======================
   // LOGIN
@@ -23,7 +21,7 @@ export const AuthProvider = ({ children }: any) => {
   const login = async (email: string, password: string) => {
     try {
       if (!API_URL) {
-        console.log("❌ VITE_API_URL is undefined!");
+        console.log("❌ API URL is undefined!");
         return false;
       }
 
@@ -34,9 +32,9 @@ export const AuthProvider = ({ children }: any) => {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // 👈 IMPORTANT PARA SA CORS
+        credentials: "include", 
         body: JSON.stringify({
-          email: email, // 👈 EMAIL NA LANG, TINANGGAL ANG USERNAME
+          email: email, 
           password: password,
         }),
       });
@@ -61,7 +59,7 @@ export const AuthProvider = ({ children }: any) => {
       return false;
     } catch (error: any) {
       console.log("❌ FETCH ERROR:", error.message);
-      console.log("💡 Possible causes: Wrong API URL, server is down, or CORS issue");
+      console.log("💡 Check if backend is running on http://localhost:8080");
       return false;
     }
   };

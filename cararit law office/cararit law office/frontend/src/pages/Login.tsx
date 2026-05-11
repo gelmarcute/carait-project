@@ -9,21 +9,21 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 // ============================
-// API URL
+// API URL (BALIK LOCALHOST)
 // ============================
-const API_URL = "https://carait-project-production.up.railway.app";
+const API_URL = "http://localhost:3000";
 
 // ============================
-// AXIOS INSTANCE (Pinalakas)
+// AXIOS INSTANCE
 // ============================
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, 
-  withCredentials: true, // Importante ito para gumana ang CORS sa Railway
+  timeout: 30000,
+  withCredentials: true,
 });
 
 const Login = () => {
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Pwede mo itong i-keep in case kailanganin sa iba
   const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +32,7 @@ const Login = () => {
   // ============================
   // LOGIN FUNCTION
   // ============================
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: any) => {
     e.preventDefault();
 
     if (!loginId || !password) {
@@ -43,22 +43,11 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log("📤 SENDING LOGIN REQUEST...");
-      
-      // ============================
-      // OPTIONAL BACKEND WAKEUP
-      // ============================
-      try {
-        await axios.get(API_URL, { timeout: 10000 });
-        console.log("✅ Backend awake");
-      } catch (wakeError) {
-        console.log("⚠️ Backend wakeup failed", wakeError);
-      }
+      console.log("📤 SENDING LOGIN REQUEST TO LOCALHOST...");
 
       // ============================
       // LOGIN REQUEST
       // ============================
-      // Ginamit ang maliit na 'api' at inalis ang username parameter
       const res = await api.post("/api/auth/login", {
         email: loginId,
         password: password,
@@ -71,6 +60,7 @@ const Login = () => {
         return;
       }
 
+      // I-save ang credentials sa browser
       if (res.data.token) {
         localStorage.setItem("token", res.data.token);
       }
@@ -80,19 +70,27 @@ const Login = () => {
       }
 
       toast.success("Login successful!");
-      navigate("/dashboard");
+      
+      // ============================
+      // THE FIX: FORCE REFRESH TO SYNC CONTEXT
+      // ============================
+      // Bibigyan natin ng 1 second ang user para makita yung "Login successful" 
+      // tapos ire-refresh natin ang page papuntang dashboard para mabasa ng AuthContext!
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 1000);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ FULL LOGIN ERROR:", err);
 
       if (err.code === "ECONNABORTED") {
-        toast.error("Server timeout. Backend may be sleeping or unreachable.");
+        toast.error("Server timeout. Backend may be offline.");
       } else if (err.response) {
         console.log("❌ SERVER RESPONSE:", err.response.data);
         toast.error(err.response.data?.error || err.response.data?.message || "Server error");
       } else if (err.request) {
         console.log("❌ NO SERVER RESPONSE");
-        toast.error("Cannot connect to backend server");
+        toast.error("Cannot connect to backend server. Is localhost:3000 running?");
       } else {
         console.log("❌ UNKNOWN ERROR:", err.message);
         toast.error(err.message || "Something went wrong");
@@ -123,7 +121,7 @@ const Login = () => {
             Carait Management
           </CardTitle>
           <CardDescription>
-            Sign in to continue
+            Sign in to continue (Local Mode)
           </CardDescription>
         </CardHeader>
         <CardContent className="px-8 pb-10">

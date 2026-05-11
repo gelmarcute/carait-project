@@ -31,20 +31,22 @@ interface SystemUser {
 const Tasks = () => {
   const { user } = useAuth();
   const [items, setItems] = useState<Task[]>([]);
-  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]); 
-  
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [open, setOpen] = useState(false);
   const [userFilter, setUserFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<"active" | "archived">("active"); 
+  const [viewMode, setViewMode] = useState<"active" | "archived">("active");
   const [form, setForm] = useState({ title: "", description: "", assignedTo: "" });
 
   const TASKS_API = "http://localhost:3000/api/tasks";
-  const USERS_API = "http://localhost:3000/api/users"; 
+  const USERS_API = "http://localhost:3000/api/users";
 
   const fetchTasks = async () => {
     try {
-      const response = await axios.get(TASKS_API);
-      setItems(response.data);
+      const response = await axios.get(TASKS_API, { withCredentials: true });
+      // 🌟 SMART EXTRACTOR: Kukunin yung 'data' array sa loob ng response
+      const rawData = response.data;
+      const actualData = rawData.data || rawData;
+      setItems(Array.isArray(actualData) ? actualData : []);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       toast.error("Failed to load tasks from the database.");
@@ -53,19 +55,24 @@ const Tasks = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(USERS_API);
-      setSystemUsers(response.data);
+      const response = await axios.get(USERS_API, { withCredentials: true });
+      // 🌟 SMART EXTRACTOR: Kukunin yung 'data' array sa loob ng response
+      const rawData = response.data;
+      const actualData = rawData.data || rawData;
+      setSystemUsers(Array.isArray(actualData) ? actualData : []);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("Failed to load users for assignment.");
     }
   };
 
-  useEffect(() => { 
-    fetchTasks(); 
-    fetchUsers(); 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => {
+    if (user) {
+      fetchTasks();
+      fetchUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const activeTasksList = items
     .filter(task => !task.archived && !task.completed)
@@ -81,64 +88,60 @@ const Tasks = () => {
 
   const handleCreate = async () => {
     if (!form.title) return toast.error("Please fill in the task title");
-    
     try {
       const assignedTo = form.assignedTo || user!.name;
-      
       await axios.post(TASKS_API, {
         title: form.title,
         description: form.description,
         assignedTo: assignedTo,
         createdBy: user!.name
-      });
+      }, { withCredentials: true });
 
       toast.success("Task created and assigned successfully!");
       setOpen(false);
       setForm({ title: "", description: "", assignedTo: "" });
       fetchTasks();
-      setViewMode("active"); 
+      setViewMode("active");
     } catch (error) {
       toast.error("Failed to create task");
     }
   };
 
   const markAsComplete = async (task: Task) => {
-    if (task.completed) return; 
-    
+    if (task.completed) return;
     try {
       setItems(items.map(i => i.id === task.id ? { ...i, completed: true } : i));
-
       await axios.put(`${TASKS_API}/${task.id}/status`, {
         completed: true,
-        user: user!.name 
-      });
+        user: user!.name
+      }, { withCredentials: true });
       toast.success("Task marked as completed!");
     } catch (error) {
       toast.error("Failed to update task status");
-      fetchTasks(); 
+      fetchTasks();
     }
   };
 
   const handleArchive = async (task: Task) => {
     try {
       setItems(items.map(i => i.id === task.id ? { ...i, archived: true } : i));
-      
       await axios.put(`${TASKS_API}/${task.id}/archive`, {
         user: user!.name,
         role: user!.role
-      });
+      }, { withCredentials: true });
       toast.success("Task moved to archives.");
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to archive task");
-      fetchTasks(); 
+      fetchTasks();
     }
   };
 
   const handleDelete = async (task: Task) => {
     if (!window.confirm("Are you sure you want to permanently delete this archived task?")) return;
     try {
-      await axios.delete(`${TASKS_API}/${task.id}`, { 
-        data: { user: user!.name, role: user!.role } 
+      await axios.delete(`${TASKS_API}/${task.id}`, {
+        data: { user: user!.name, role: user!.role },
+        withCredentials: true
       });
       toast.success("Task permanently deleted");
       fetchTasks();
@@ -154,13 +157,10 @@ const Tasks = () => {
 
   return (
     <PageLayout title="✅ Tasks & Assignments">
-      
       {/* FILTER & ADD TASK BAR (One Line Minimalist Header) */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-        
         {/* Left Side: View & Assignee Filters */}
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-          
           <Select value={viewMode} onValueChange={(val: "active" | "archived") => setViewMode(val)}>
             <SelectTrigger className="h-10 w-full sm:w-[150px] bg-transparent border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-xs font-medium shadow-none focus:ring-0 focus:border-slate-400">
               <ListTodo className="w-3.5 h-3.5 mr-2 opacity-70" />
@@ -181,15 +181,14 @@ const Tasks = () => {
               <SelectItem value="all">All Assignees</SelectItem>
               <SelectItem value={user?.name || "me"}>My Tasks ({user?.name})</SelectItem>
               {systemUsers.map((dbUser) => (
-                 dbUser.fullName !== user?.name && (
-                   <SelectItem key={dbUser.id} value={dbUser.fullName}>
-                     {dbUser.fullName}'s Tasks
-                   </SelectItem>
-                 )
+                dbUser.fullName !== user?.name && (
+                  <SelectItem key={dbUser.id} value={dbUser.fullName}>
+                    {dbUser.fullName}'s Tasks
+                  </SelectItem>
+                )
               ))}
             </SelectContent>
           </Select>
-
         </div>
 
         {/* Right Side: Minimal Add Button */}
@@ -197,10 +196,10 @@ const Tasks = () => {
           <Dialog open={open} onOpenChange={(v) => { setOpen(v); if(!v) setForm({ title: "", description: "", assignedTo: "" }); }}>
             <DialogTrigger asChild>
               <Button className="h-10 rounded-full font-medium text-xs px-4 bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 w-full md:w-auto shadow-sm transition-all">
-                <Plus className="h-4 w-4 mr-1.5" /> New Task
+                <Plus className="h-4 w-4 mr-1.5" />
+                New Task
               </Button>
             </DialogTrigger>
-            
             <DialogContent className="sm:max-w-md w-[95vw] rounded-2xl p-6 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 shadow-2xl">
               <DialogHeader>
                 <DialogTitle className="text-lg font-bold text-slate-800 dark:text-slate-100">Create Task</DialogTitle>
@@ -208,25 +207,12 @@ const Tasks = () => {
               <div className="space-y-5 mt-2">
                 <div>
                   <Label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Task Title</Label>
-                  <Input 
-                    className="h-11 mt-1.5 rounded-lg focus-visible:ring-1 focus-visible:ring-slate-400 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 shadow-none border-slate-200" 
-                    placeholder="What needs to be done?" 
-                    value={form.title} 
-                    onChange={(e) => setForm({ ...form, title: e.target.value })} 
-                  />
+                  <Input className="h-11 mt-1.5 rounded-lg focus-visible:ring-1 focus-visible:ring-slate-400 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 shadow-none border-slate-200" placeholder="What needs to be done?" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
                 </div>
-                
                 <div>
                   <Label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Details (Optional)</Label>
-                  <Textarea 
-                    className="mt-1.5 resize-none rounded-lg focus-visible:ring-1 focus-visible:ring-slate-400 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 shadow-none border-slate-200" 
-                    rows={3} 
-                    placeholder="Add instructions or details here..." 
-                    value={form.description} 
-                    onChange={(e) => setForm({ ...form, description: e.target.value })} 
-                  />
+                  <Textarea className="mt-1.5 resize-none rounded-lg focus-visible:ring-1 focus-visible:ring-slate-400 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-100 shadow-none border-slate-200" rows={3} placeholder="Add instructions or details here..." value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
                 </div>
-                
                 <div>
                   <Label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assign To</Label>
                   <Select value={form.assignedTo} onValueChange={(val) => setForm({ ...form, assignedTo: val })}>
@@ -245,7 +231,6 @@ const Tasks = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
                 <Button className="w-full h-11 text-sm font-bold mt-2 rounded-lg bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 border-none shadow-sm" onClick={handleCreate}>
                   Create Task
                 </Button>
@@ -310,20 +295,16 @@ const Tasks = () => {
               {activeTasksList.map((task) => (
                 <div key={task.id} className="group relative overflow-hidden bg-transparent border border-slate-200 dark:border-slate-800/80 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
                   <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-blue-500/80 dark:bg-blue-500/60" />
-                  
                   <div className="flex-1 min-w-0 w-full pl-2">
                     <div className="flex items-start gap-3">
                       <div onClick={() => markAsComplete(task)} className="mt-1 shrink-0 w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 cursor-pointer transition-colors" title="Mark as done" />
-                      
                       <div className="flex-1 min-w-0">
                         <h3 className="text-base font-medium leading-tight text-slate-800 dark:text-slate-100">{task.title}</h3>
-                        
                         {task.description && (
                           <div className="text-sm mt-1 flex items-start gap-2 text-slate-500 dark:text-slate-400 opacity-80">
                             <span className="leading-relaxed whitespace-pre-wrap">{task.description}</span>
                           </div>
                         )}
-
                         <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 dark:text-slate-500 mt-2.5 font-medium opacity-70">
                           <span className="flex items-center gap-1.5"><UserCircle className="h-3.5 w-3.5" /> {task.assignedTo}</span>
                           <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> {formatDate(task.createdAt)}</span>
@@ -370,7 +351,6 @@ const Tasks = () => {
                   </tbody>
                 </table>
               </div>
-
               {/* Mobile View for Completed */}
               <div className="md:hidden flex flex-col gap-2">
                 {completedTasksList.map((task) => (

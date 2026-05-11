@@ -9,24 +9,17 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 // ============================
-// API URL (Tanggalin ang extra slash sa dulo kung meron)
+// API URL
 // ============================
 const API_URL = "https://carait-project-production.up.railway.app";
 
 // ============================
-// AXIOS INSTANCE
+// AXIOS INSTANCE (Pinalakas)
 // ============================
-const API = axios.create({
-
+const api = axios.create({
   baseURL: API_URL,
-
-  headers: {
-    "Content-Type": "application/json"
-  },
-
-  withCredentials: false,
-
-  timeout: 30000
+  timeout: 30000, 
+  withCredentials: true, // Importante ito para gumana ang CORS sa Railway
 });
 
 const Login = () => {
@@ -37,7 +30,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // ============================
-  // LOGIN
+  // LOGIN FUNCTION
   // ============================
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -51,8 +44,7 @@ const Login = () => {
 
     try {
       console.log("📤 SENDING LOGIN REQUEST...");
-      console.log("🌐 API URL:", `${API_URL}/api/auth/login`);
-
+      
       // ============================
       // OPTIONAL BACKEND WAKEUP
       // ============================
@@ -66,10 +58,10 @@ const Login = () => {
       // ============================
       // LOGIN REQUEST
       // ============================
-      const res = await API.post("/api/auth/login", {
+      // Ginamit ang maliit na 'api' at inalis ang username parameter
+      const res = await api.post("/api/auth/login", {
         email: loginId,
-        username: loginId,
-        password,
+        password: password,
       });
 
       console.log("✅ LOGIN RESPONSE:", res.data);
@@ -94,7 +86,7 @@ const Login = () => {
       console.error("❌ FULL LOGIN ERROR:", err);
 
       if (err.code === "ECONNABORTED") {
-        toast.error("Server timeout. Backend may be sleeping or database unreachable.");
+        toast.error("Server timeout. Backend may be sleeping or unreachable.");
       } else if (err.response) {
         console.log("❌ SERVER RESPONSE:", err.response.data);
         toast.error(err.response.data?.error || err.response.data?.message || "Server error");
@@ -138,13 +130,13 @@ const Login = () => {
           <form onSubmit={handleLogin} className="space-y-6">
             {/* LOGIN ID */}
             <div className="space-y-2">
-              <Label htmlFor="loginId">Email or Username</Label>
+              <Label htmlFor="loginId">Email</Label>
               <Input
                 id="loginId"
                 type="text"
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                placeholder="Enter email or username"
+                placeholder="Enter email"
                 className="h-12"
                 required
                 disabled={isLoading}

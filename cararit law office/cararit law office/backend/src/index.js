@@ -20,13 +20,20 @@ process.on('unhandledRejection', (err) => {
 });
 
 // ============================
+// EXPRESS
+// ============================
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// ============================
 // DATABASE
 // ============================
 
 const db = require('./models/db');
 
 // ============================
-// CONTROLLERS / HELPERS
+// HELPERS
 // ============================
 
 const {
@@ -38,97 +45,10 @@ const {
 } = require('./utils/scheduler');
 
 // ============================
-// EXPRESS APP
-// ============================
-
-const app = express();
-
-const PORT = process.env.PORT || 3000;
-
-// ============================
 // TRUST PROXY
 // ============================
 
 app.set('trust proxy', 1);
-
-// ============================
-// ALLOWED ORIGINS
-// ============================
-
-const allowedOrigins = [
-
-  'https://caraitoffice.netlify.app',
-
-  'https://carait-project-gelmarcutes-projects.vercel.app',
-
-  'https://carait-project-git-main-gelmarcutes-projects.vercel.app',
-
-  'https://carait-project.vercel.app',
-
-  'https://carait-project-4fy3k8hsi-gazzingangerliep-3721s-projects.vercel.app',
-
-  'http://localhost:5173',
-
-  'http://localhost:3000',
-
-  'http://localhost:8080'
-];
-
-// ============================
-// CORS
-// ============================
-
-const corsOptions = {
-
-  origin: function(origin, callback) {
-
-    // Allow Postman / Mobile Apps
-
-    if (!origin) {
-
-      return callback(null, true);
-    }
-
-    // Allow Frontend Domains
-
-    if (allowedOrigins.includes(origin)) {
-
-      return callback(null, true);
-    }
-
-    console.log('❌ BLOCKED ORIGIN:', origin);
-
-    return callback(
-      new Error('Not allowed by CORS')
-    );
-  },
-
-  credentials: true,
-
-  methods: [
-    'GET',
-    'POST',
-    'PUT',
-    'DELETE',
-    'OPTIONS'
-  ],
-
-  allowedHeaders: [
-    'Origin',
-    'X-Requested-With',
-    'Content-Type',
-    'Accept',
-    'Authorization'
-  ]
-};
-
-// ============================
-// APPLY CORS
-// ============================
-
-app.use(cors(corsOptions));
-
-app.options('*', cors(corsOptions));
 
 // ============================
 // BODY PARSER
@@ -152,7 +72,49 @@ app.use(helmet({
 }));
 
 // ============================
-// REQUEST LOGGER
+// CORS
+// ============================
+
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
+// ============================
+// MANUAL HEADERS
+// ============================
+
+app.use((req, res, next) => {
+
+  res.header(
+    'Access-Control-Allow-Origin',
+    req.headers.origin || '*'
+  );
+
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+  );
+
+  res.header(
+    'Access-Control-Allow-Methods',
+    'GET, POST, PUT, DELETE, OPTIONS'
+  );
+
+  res.header(
+    'Access-Control-Allow-Credentials',
+    'true'
+  );
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
+
+// ============================
+// LOGGER
 // ============================
 
 app.use((req, res, next) => {
@@ -171,9 +133,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
 
   return res.status(200).json({
-
     success: true,
-
     message: 'Backend running successfully'
   });
 });
@@ -185,15 +145,13 @@ app.get('/', (req, res) => {
 app.get('/api/test', (req, res) => {
 
   return res.status(200).json({
-
     success: true,
-
     message: 'Backend working'
   });
 });
 
 // ============================
-// DATABASE CONNECTION TEST
+// DATABASE TEST
 // ============================
 
 db.getConnection((err, connection) => {
@@ -217,12 +175,12 @@ db.getConnection((err, connection) => {
 });
 
 // ============================
-// UPLOAD DIRECTORY
+// UPLOADS
 // ============================
 
 const uploadDir = path.join(
   __dirname,
-  '../uploads'
+  'uploads'
 );
 
 if (!fs.existsSync(uploadDir)) {
@@ -239,7 +197,6 @@ if (!fs.existsSync(uploadDir)) {
 const storage = multer.diskStorage({
 
   destination: (req, file, cb) => {
-
     cb(null, uploadDir);
   },
 
@@ -248,11 +205,8 @@ const storage = multer.diskStorage({
     const uniqueName =
 
       Date.now() +
-
       '-' +
-
       Math.round(Math.random() * 1e9) +
-
       path.extname(file.originalname);
 
     cb(null, uniqueName);
@@ -264,18 +218,15 @@ const storage = multer.diskStorage({
 // ============================
 
 const fileFilter = (
-
   req,
   file,
   cb
-
 ) => {
 
   const allowedTypes =
     /jpeg|jpg|png|pdf/;
 
   const extname = allowedTypes.test(
-
     path.extname(
       file.originalname
     ).toLowerCase()
@@ -284,20 +235,15 @@ const fileFilter = (
   const mimetype =
 
     file.mimetype === 'image/jpeg' ||
-
     file.mimetype === 'image/jpg' ||
-
     file.mimetype === 'image/png' ||
-
     file.mimetype === 'application/pdf';
 
   if (extname && mimetype) {
-
     return cb(null, true);
   }
 
   return cb(
-
     new Error(
       'Only JPG, PNG, PDF files are allowed'
     )
@@ -313,16 +259,14 @@ const upload = multer({
   storage,
 
   limits: {
-
-    fileSize:
-      10 * 1024 * 1024
+    fileSize: 10 * 1024 * 1024
   },
 
   fileFilter
 });
 
 // ============================
-// STATIC FILES
+// STATIC
 // ============================
 
 app.use(
@@ -387,12 +331,10 @@ app.post(
   '/api/solicitations',
 
   upload.fields([
-
     {
       name: 'documentImage',
       maxCount: 1
     },
-
     {
       name: 'personImage',
       maxCount: 1
@@ -425,9 +367,7 @@ app.post(
           : null;
 
       const sql = `
-
         INSERT INTO solicitations (
-
           userId,
           event,
           date,
@@ -441,45 +381,28 @@ app.post(
           documentImageUrl,
           personImageUrl,
           status
-
         )
-
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
       `;
 
       const values = [
-
         data.userId || null,
-
         data.event,
-
         data.date,
-
         data.request,
-
         data.venue,
-
         data.requisitorName,
-
         data.contactNo,
-
         data.requisitorDistrict,
-
         data.requisitorBarangay,
-
         data.remarks,
-
         docUrl,
-
         personUrl
       ];
 
       db.query(
-
         sql,
-
         values,
-
         (err, result) => {
 
           if (err) {
@@ -487,29 +410,20 @@ app.post(
             console.error(err);
 
             return res.status(500).json({
-
               success: false,
-
               error: err.message
             });
           }
 
           addActivityLog(
-
             `Added solicitation for ${data.requisitorName}`,
-
             data.requisitorName || 'System'
           );
 
           return res.status(201).json({
-
             success: true,
-
-            message:
-              'Solicitation created successfully',
-
-            insertId:
-              result.insertId
+            message: 'Solicitation created successfully',
+            insertId: result.insertId
           });
         }
       );
@@ -519,9 +433,7 @@ app.post(
       console.error(error);
 
       return res.status(500).json({
-
         success: false,
-
         error: 'Server Error'
       });
     }
@@ -529,31 +441,22 @@ app.post(
 );
 
 // ============================
-// 404 ROUTE
+// 404
 // ============================
 
 app.use((req, res) => {
 
   return res.status(404).json({
-
     success: false,
-
     error: 'Route not found'
   });
 });
 
 // ============================
-// GLOBAL ERROR HANDLER
+// ERROR HANDLER
 // ============================
 
-app.use((
-
-  err,
-  req,
-  res,
-  next
-
-) => {
+app.use((err, req, res, next) => {
 
   console.error(
     '❌ GLOBAL ERROR:',
@@ -561,9 +464,7 @@ app.use((
   );
 
   return res.status(500).json({
-
     success: false,
-
     error:
       err.message ||
       'Something went wrong'
@@ -571,21 +472,22 @@ app.use((
 });
 
 // ============================
-// START TASK SCHEDULER
+// START SCHEDULER
 // ============================
 
-startTaskScheduler();
+try {
+  startTaskScheduler();
+} catch (err) {
+  console.log('⚠️ Scheduler skipped');
+}
 
 // ============================
 // START SERVER
 // ============================
 
 app.listen(
-
   PORT,
-
   '0.0.0.0',
-
   () => {
 
     console.log(

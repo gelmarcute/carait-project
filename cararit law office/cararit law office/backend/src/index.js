@@ -8,23 +8,11 @@ const path = require('path');
 const fs = require('fs');
 
 // ============================
-// ERROR DEBUGGING
-// ============================
-
-process.on('uncaughtException', (err) => {
-  console.error('❌ UNCAUGHT EXCEPTION:', err);
-});
-
-process.on('unhandledRejection', (err) => {
-  console.error('❌ UNHANDLED REJECTION:', err);
-});
-
-// ============================
 // EXPRESS
 // ============================
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // ============================
 // DATABASE
@@ -45,6 +33,18 @@ const {
 } = require('./utils/scheduler');
 
 // ============================
+// ERROR DEBUGGING
+// ============================
+
+process.on('uncaughtException', (err) => {
+  console.error('❌ UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('❌ UNHANDLED REJECTION:', err);
+});
+
+// ============================
 // TRUST PROXY
 // ============================
 
@@ -61,43 +61,34 @@ app.use(
 );
 
 // ============================
-// CORS FIX FINAL
+// CORS FIX
 // ============================
 
 const corsOptions = {
 
   origin: (origin, callback) => {
 
-    // Allow Postman / Mobile Apps
+    // allow postman/mobile apps
     if (!origin) {
       return callback(null, true);
     }
 
-    // Allow localhost
-    if (
-      origin.includes('localhost')
-    ) {
+    // allow localhost
+    if (origin.includes('localhost')) {
       return callback(null, true);
     }
 
-    // Allow ALL vercel domains
-    if (
-      origin.includes('.vercel.app')
-    ) {
+    // allow vercel
+    if (origin.includes('.vercel.app')) {
       return callback(null, true);
     }
 
-    // Allow ALL netlify domains
-    if (
-      origin.includes('.netlify.app')
-    ) {
+    // allow netlify
+    if (origin.includes('.netlify.app')) {
       return callback(null, true);
     }
 
-    console.log(
-      '✅ ALLOWED ORIGIN:',
-      origin
-    );
+    console.log('✅ Allowed Origin:', origin);
 
     return callback(null, true);
   },
@@ -121,24 +112,28 @@ const corsOptions = {
   ]
 };
 
-// APPLY CORS
 app.use(cors(corsOptions));
 
-// HANDLE PREFLIGHT
+// ============================
+// PREFLIGHT FIX
+// ============================
+
 app.options('*', cors(corsOptions));
 
 // ============================
-// MANUAL HEADERS FIX
+// MANUAL HEADERS
 // ============================
 
 app.use((req, res, next) => {
 
   const origin = req.headers.origin;
 
-  res.header(
-    'Access-Control-Allow-Origin',
-    origin || '*'
-  );
+  if (origin) {
+    res.header(
+      'Access-Control-Allow-Origin',
+      origin
+    );
+  }
 
   res.header(
     'Access-Control-Allow-Headers',
@@ -205,10 +200,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// ============================
-// TEST ROUTE
-// ============================
-
 app.get('/api/test', (req, res) => {
 
   return res.status(200).json({
@@ -225,30 +216,22 @@ db.getConnection((err, connection) => {
 
   if (err) {
 
-    console.error(
-      '❌ MYSQL CONNECTION ERROR'
-    );
-
+    console.error('❌ MYSQL CONNECTION ERROR');
     console.error(err);
 
     return;
   }
 
-  console.log(
-    '✅ MYSQL CONNECTED'
-  );
+  console.log('✅ MYSQL CONNECTED');
 
   connection.release();
 });
 
 // ============================
-// UPLOADS
+// UPLOAD DIRECTORY
 // ============================
 
-const uploadDir = path.join(
-  __dirname,
-  'uploads'
-);
+const uploadDir = path.join(__dirname, 'uploads');
 
 if (!fs.existsSync(uploadDir)) {
 
@@ -270,7 +253,6 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
 
     const uniqueName =
-
       Date.now() +
       '-' +
       Math.round(Math.random() * 1e9) +
@@ -284,23 +266,15 @@ const storage = multer.diskStorage({
 // FILE FILTER
 // ============================
 
-const fileFilter = (
-  req,
-  file,
-  cb
-) => {
+const fileFilter = (req, file, cb) => {
 
-  const allowedTypes =
-    /jpeg|jpg|png|pdf/;
+  const allowedTypes = /jpeg|jpg|png|pdf/;
 
   const extname = allowedTypes.test(
-    path.extname(
-      file.originalname
-    ).toLowerCase()
+    path.extname(file.originalname).toLowerCase()
   );
 
   const mimetype =
-
     file.mimetype === 'image/jpeg' ||
     file.mimetype === 'image/jpg' ||
     file.mimetype === 'image/png' ||
@@ -508,7 +482,7 @@ app.post(
 );
 
 // ============================
-// 404
+// 404 ROUTE
 // ============================
 
 app.use((req, res) => {
@@ -548,9 +522,7 @@ try {
 
 } catch (err) {
 
-  console.log(
-    '⚠️ Scheduler skipped'
-  );
+  console.log('⚠️ Scheduler skipped');
 }
 
 // ============================
